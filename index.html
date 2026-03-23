@@ -15,7 +15,16 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 .ph p{font-size:.7rem;color:var(--d);margin-top:3px;}
 .ps{flex:1;overflow-y:auto;padding:12px 20px 90px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.06) transparent;}
 .ps::-webkit-scrollbar{width:4px;}.ps::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px;}
-.sec{margin-bottom:14px;}.st{font-size:.6rem;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--d);margin-bottom:7px;display:flex;align-items:center;gap:8px;}.st::after{content:'';flex:1;height:1px;background:var(--pb);}
+.sec{margin-bottom:2px;}
+.cat{border-bottom:1px solid var(--pb);}
+.cat-h{display:flex;align-items:center;gap:8px;padding:9px 0;cursor:pointer;user-select:none;}
+.cat-h:hover{color:var(--b);}
+.cat-ico{font-size:.9rem;width:20px;text-align:center;flex-shrink:0;}
+.cat-lbl{font-size:.72rem;font-weight:500;letter-spacing:.06em;color:var(--t);flex:1;}
+.cat-arr{font-size:.55rem;color:var(--d);transition:transform .25s;}.cat.closed .cat-arr{transform:rotate(-90deg);}
+.cat-body{padding:0 0 8px;overflow:hidden;max-height:800px;transition:max-height .3s ease,padding .3s;}
+.cat.closed .cat-body{max-height:0;padding:0;overflow:hidden;}
+.st{font-size:.55rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--d);margin:6px 0 5px;display:flex;align-items:center;gap:6px;}.st::after{content:'';flex:1;height:1px;background:var(--pb);}
 .f{margin-bottom:7px;}.f label{display:block;font-size:.68rem;color:var(--d);margin-bottom:3px;}
 .f input[type="text"],.f select{width:100%;background:var(--ib);border:1px solid var(--ibo);border-radius:var(--r);padding:6px 9px;color:var(--b);font-family:'DM Sans',sans-serif;font-size:.78rem;outline:none;}
 .f input:focus,.f select:focus{border-color:rgba(201,168,124,.3);}
@@ -84,14 +93,15 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="ph"><h1><span>3D</span>Intro</h1><p>Générateur d'intro live</p></div>
 <div class="ps">
 
-<div class="sec"><div class="st">Modèle 3D</div>
+<!-- 1. MODÈLE -->
+<div class="cat" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">📦</span><span class="cat-lbl">Modèle & Matériau</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
 <div id="mDrop" class="drop"><div class="lb">Glissez un <strong>.glb / .stl</strong> ici</div><input type="file" accept=".glb,.gltf,.stl" style="display:none" id="mIn"></div>
 <div class="f" style="margin-top:6px"><label>Échelle</label><div class="sr"><input type="range" id="modScale" min="20" max="300" value="100"><span class="v" id="modScaleV">100%</span></div></div>
 <div class="f"><label>Orientation (°)</label><div class="sr"><input type="range" id="modRot" min="0" max="360" value="0"><span class="v" id="modRotV">0°</span></div></div>
 <div class="f"><label>Auto-rotation</label><div class="sr"><input type="range" id="modSpin" min="0" max="30" value="0"><span class="v" id="modSpinV">0</span></div></div>
-</div>
-
-<div class="sec"><div class="st">Matériau</div>
+<div class="st">Matériau</div>
 <div class="pr" id="matPr">
 <button class="pb ac" data-mat="original" onclick="setMat(this)">Original</button>
 <button class="pb" data-mat="bronze" onclick="setMat(this)">Bronze</button>
@@ -99,86 +109,97 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <button class="pb" data-mat="chrome" onclick="setMat(this)">Chrome</button>
 <button class="pb" data-mat="gold" onclick="setMat(this)">Or</button>
 <button class="pb" data-mat="matte" onclick="setMat(this)">Noir mat</button>
+</div>
 </div></div>
 
-<div class="sec"><div class="st">Logo</div>
+<!-- 2. TEXTES & LOGO -->
+<div class="cat" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">✏️</span><span class="cat-lbl">Textes & Logo</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="st">Titre</div>
+<div class="f"><label>Police</label><select id="fontT"><option value="'Cormorant Garamond',serif" selected>Cormorant Garamond</option><option value="'Playfair Display',serif">Playfair Display</option><option value="'Cinzel',serif">Cinzel</option><option value="'Montserrat',sans-serif">Montserrat</option><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Raleway',sans-serif">Raleway</option></select></div>
+<div class="f"><label>Titre</label><input type="text" id="tT" value="Lycée Henri Loritz"></div>
+<div class="f"><label>Taille</label><div class="sr"><input type="range" id="tTsz" min="12" max="60" value="28"><span class="v" id="tTszV">28</span></div></div>
+<div class="f"><label>Sous-titre</label><input type="text" id="tS" value="Nancy — Établissement public"></div>
+<div class="f"><label>Taille</label><div class="sr"><input type="range" id="tSsz" min="8" max="30" value="11"><span class="v" id="tSszV">11</span></div></div>
+<div class="st">Bas de page</div>
+<div class="f"><label>Bas gauche</label><input type="text" id="tBL" value="Henri Loritz · 1803 – 1882"></div>
+<div class="f"><label>Bas droite</label><input type="text" id="tBR" value="La diffusion va commencer…"></div>
+<div class="f"><label>Taille</label><div class="sr"><input type="range" id="tBsz" min="8" max="24" value="11"><span class="v" id="tBszV">11</span></div></div>
+<div class="f"><label>Badge live</label><input type="text" id="tLV" value="En direct"></div>
+<div class="st">Logo</div>
 <div id="lDrop" class="drop"><div class="lb">Glissez une <strong>image</strong></div><input type="file" accept="image/*" style="display:none" id="lIn"></div>
 <div class="f" style="margin-top:5px"><label>Position</label><select id="logoPos"><option value="tl">Haut gauche</option><option value="tr" selected>Haut droite</option><option value="bl">Bas gauche</option><option value="br">Bas droite</option></select></div>
 <div class="f"><label>Taille</label><div class="sr"><input type="range" id="logoSz" min="30" max="200" value="70"><span class="v" id="logoSzV">70</span></div></div>
-</div>
+<div class="st">Animation textes</div>
+<div class="f"><label>Type</label><select id="txtAnim"><option value="fade">Fondu</option><option value="slide-up">Glissement ↑</option><option value="slide-left">Glissement ←</option><option value="typewriter">Machine à écrire</option><option value="none">Aucune</option></select></div>
+<div class="f"><label>Durée</label><div class="sr"><input type="range" id="animDur" min="5" max="40" value="20"><span class="v" id="animDurV">2.0s</span></div></div>
+</div></div>
 
-<div class="sec"><div class="st">Textes</div>
-<div class="f"><label>Police titre</label><select id="fontT"><option value="'Cormorant Garamond',serif" selected>Cormorant Garamond</option><option value="'Playfair Display',serif">Playfair Display</option><option value="'Cinzel',serif">Cinzel</option><option value="'Montserrat',sans-serif">Montserrat</option><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Raleway',sans-serif">Raleway</option></select></div>
-<div class="f"><label>Titre</label><input type="text" id="tT" value="Lycée Henri Loritz"></div>
-<div class="f"><label>Taille titre</label><div class="sr"><input type="range" id="tTsz" min="12" max="60" value="28"><span class="v" id="tTszV">28</span></div></div>
-<div class="f"><label>Sous-titre</label><input type="text" id="tS" value="Nancy — Établissement public"></div>
-<div class="f"><label>Taille sous-titre</label><div class="sr"><input type="range" id="tSsz" min="8" max="30" value="11"><span class="v" id="tSszV">11</span></div></div>
-<div class="f"><label>Bas gauche</label><input type="text" id="tBL" value="Henri Loritz · 1803 – 1882"></div>
-<div class="f"><label>Bas droite</label><input type="text" id="tBR" value="La diffusion va commencer…"></div>
-<div class="f"><label>Taille bas</label><div class="sr"><input type="range" id="tBsz" min="8" max="24" value="11"><span class="v" id="tBszV">11</span></div></div>
-<div class="f"><label>Badge live</label><input type="text" id="tLV" value="En direct"></div>
-</div>
-
-<div class="sec"><div class="st">Couleurs</div>
+<!-- 3. COULEURS & SOL -->
+<div class="cat closed" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">🎨</span><span class="cat-lbl">Couleurs & Sol</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
 <div class="cr"><input type="color" id="cA" value="#dcc8aa"><label>Textes</label></div>
 <div class="cr"><input type="color" id="cB" value="#08080a"><label>Fond</label></div>
 <div class="cr"><input type="color" id="cL" value="#c0392b"><label>Badge live</label></div>
-<div class="cr"><input type="color" id="cF" value="#0e0e11"><label>Sol</label></div>
+<div class="f"><label>Opacité textes</label><div class="sr"><input type="range" id="tOp" min="20" max="100" value="85"><span class="v" id="tOpV">85%</span></div></div>
+<div class="st">Sol</div>
+<div class="cr"><input type="color" id="cF" value="#0e0e11"><label>Couleur</label></div>
 <div class="tr"><span>Afficher le sol</span><button class="tg on" id="togFloor" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Sol réfléchissant</span><button class="tg" id="togReflect" onclick="this.classList.toggle('on');U()"></button></div>
-<div class="f"><label>Opacité textes</label><div class="sr"><input type="range" id="tOp" min="20" max="100" value="85"><span class="v" id="tOpV">85%</span></div></div>
-</div>
+</div></div>
 
-<div class="sec"><div class="st">Éclairage</div>
-<div class="f"><label>Preset</label>
-<div class="pr" id="lightPr">
+<!-- 4. ÉCLAIRAGE -->
+<div class="cat" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">💡</span><span class="cat-lbl">Éclairage</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="f"><label>Preset</label><div class="pr" id="lightPr">
 <button class="pb ac" data-kc="#ffeedd" data-ki="20" data-rc="#ddccaa" data-ri="7" data-ai="4" data-lo="0" onclick="lightP(this)">Classique</button>
 <button class="pb" data-kc="#fff5e6" data-ki="30" data-rc="#ffd699" data-ri="10" data-ai="2" data-lo="0" onclick="lightP(this)">Dramatique</button>
 <button class="pb" data-kc="#e8e8ff" data-ki="15" data-rc="#aaaacc" data-ri="5" data-ai="6" data-lo="0" onclick="lightP(this)">Froid</button>
-<button class="pb" data-kc="#ffcc88" data-ki="25" data-rc="#ff9944" data-ri="8" data-ai="2" data-lo="30" onclick="lightP(this)">Coucher de soleil</button>
+<button class="pb" data-kc="#ffcc88" data-ki="25" data-rc="#ff9944" data-ri="8" data-ai="2" data-lo="30" onclick="lightP(this)">Coucher soleil</button>
 <button class="pb" data-kc="#4466aa" data-ki="12" data-rc="#2244aa" data-ri="6" data-ai="3" data-lo="180" onclick="lightP(this)">Nuit bleue</button>
-<button class="pb" data-kc="#ffffff" data-ki="10" data-rc="#ffffff" data-ri="5" data-ai="10" data-lo="0" onclick="lightP(this)">Plat (soft)</button>
+<button class="pb" data-kc="#ffffff" data-ki="10" data-rc="#ffffff" data-ri="5" data-ai="10" data-lo="0" onclick="lightP(this)">Plat</button>
 <button class="pb" data-kc="#ffddbb" data-ki="35" data-rc="#000000" data-ri="0" data-ai="1" data-lo="0" onclick="lightP(this)">Clair-obscur</button>
 <button class="pb" data-kc="#ff88aa" data-ki="18" data-rc="#8844ff" data-ri="8" data-ai="3" data-lo="120" onclick="lightP(this)">Néon</button>
 </div></div>
 <div class="f"><label>Luminosité globale</label><div class="sr"><input type="range" id="gExp" min="3" max="30" value="9"><span class="v" id="gExpV">0.9</span></div></div>
-<div class="cr"><input type="color" id="cK" value="#ffeedd"><label>Lumière principale</label></div>
-<div class="f"><label>Intensité principale</label><div class="sr"><input type="range" id="kI" min="5" max="80" value="20"><span class="v" id="kIV">2.0</span></div></div>
-<div class="f"><label>Distance principale</label><div class="sr"><input type="range" id="kDist" min="5" max="30" value="10"><span class="v" id="kDistV">10</span></div></div>
-<div class="cr"><input type="color" id="cR" value="#ddccaa"><label>Contre-jour</label></div>
-<div class="f"><label>Intensité contre-jour</label><div class="sr"><input type="range" id="rI" min="0" max="40" value="7"><span class="v" id="rIV">0.7</span></div></div>
-<div class="cr"><input type="color" id="cL2" value="#99aabb"><label>Lumière secondaire</label></div>
-<div class="f"><label>Intensité secondaire</label><div class="sr"><input type="range" id="l2I" min="0" max="40" value="5"><span class="v" id="l2IV">0.5</span></div></div>
-<div class="f"><label>Orbite secondaire (°)</label><div class="sr"><input type="range" id="l2Orb" min="0" max="360" value="220"><span class="v" id="l2OrbV">220°</span></div></div>
-<div class="f"><label>Lumière ambiante</label><div class="sr"><input type="range" id="aI" min="0" max="30" value="4"><span class="v" id="aIV">0.4</span></div></div>
+<div class="st">Principale</div>
+<div class="cr"><input type="color" id="cK" value="#ffeedd"><label>Couleur</label></div>
+<div class="f"><label>Intensité</label><div class="sr"><input type="range" id="kI" min="5" max="80" value="20"><span class="v" id="kIV">2.0</span></div></div>
+<div class="f"><label>Distance</label><div class="sr"><input type="range" id="kDist" min="5" max="30" value="10"><span class="v" id="kDistV">10</span></div></div>
+<div class="st">Contre-jour</div>
+<div class="cr"><input type="color" id="cR" value="#ddccaa"><label>Couleur</label></div>
+<div class="f"><label>Intensité</label><div class="sr"><input type="range" id="rI" min="0" max="40" value="7"><span class="v" id="rIV">0.7</span></div></div>
+<div class="st">Secondaire</div>
+<div class="cr"><input type="color" id="cL2" value="#99aabb"><label>Couleur</label></div>
+<div class="f"><label>Intensité</label><div class="sr"><input type="range" id="l2I" min="0" max="40" value="5"><span class="v" id="l2IV">0.5</span></div></div>
+<div class="f"><label>Orbite (°)</label><div class="sr"><input type="range" id="l2Orb" min="0" max="360" value="220"><span class="v" id="l2OrbV">220°</span></div></div>
+<div class="st">Général</div>
+<div class="f"><label>Ambiante</label><div class="sr"><input type="range" id="aI" min="0" max="30" value="4"><span class="v" id="aIV">0.4</span></div></div>
 <div class="f"><label>Orbite éclairage (°)</label><div class="sr"><input type="range" id="lOrb" min="0" max="360" value="0"><span class="v" id="lOrbV">0°</span></div></div>
-</div>
+</div></div>
 
-<div class="sec"><div class="st">Environnement (HDRI)</div>
+<!-- 5. ENVIRONNEMENT -->
+<div class="cat closed" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">🌐</span><span class="cat-lbl">Environnement HDRI</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
 <div class="f"><label>Environnement</label><select id="hdri">
 <option value="">Aucun</option>
-<optgroup label="Studio">
-<option value="studio_small_09">Studio sombre</option>
-<option value="studio_small_03">Studio neutre</option>
-<option value="studio_small_07">Studio lumineux</option>
-<option value="photo_studio_loft_hall">Loft studio</option>
-</optgroup>
-<optgroup label="Extérieur">
-<option value="kloofendal_48d_partly_cloudy_puresky">Ciel nuageux</option>
-<option value="evening_road_01_puresky">Route crépuscule</option>
-<option value="dikhololo_night_puresky">Nuit étoilée</option>
-<option value="aerodynamics_workshop">Atelier industriel</option>
-</optgroup>
-<optgroup label="Personnalisé">
-<option value="custom" id="hdriCustomOpt" disabled>— charger ci-dessous —</option>
-</optgroup>
+<optgroup label="Studio"><option value="studio_small_09">Studio sombre</option><option value="studio_small_03">Studio neutre</option><option value="studio_small_07">Studio lumineux</option><option value="photo_studio_loft_hall">Loft studio</option></optgroup>
+<optgroup label="Extérieur"><option value="kloofendal_48d_partly_cloudy_puresky">Ciel nuageux</option><option value="evening_road_01_puresky">Crépuscule</option><option value="dikhololo_night_puresky">Nuit étoilée</option><option value="aerodynamics_workshop">Atelier industriel</option></optgroup>
+<optgroup label="Personnalisé"><option value="custom" id="hdriCustomOpt" disabled>— charger ci-dessous —</option></optgroup>
 </select></div>
 <div id="hdriDrop" class="drop" style="margin-bottom:6px"><div class="lb">HDRI personnalisé (<strong>.hdr</strong>)</div><input type="file" accept=".hdr,.exr" style="display:none" id="hdriIn"></div>
 <div class="tr"><span>Afficher en fond</span><button class="tg" id="togHdriBg" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Intensité reflets</label><div class="sr"><input type="range" id="hdriInt" min="1" max="30" value="10"><span class="v" id="hdriIntV">1.0</span></div></div>
-</div>
+</div></div>
 
-<div class="sec"><div class="st">Caméra</div>
+<!-- 6. CAMÉRA -->
+<div class="cat" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">🎥</span><span class="cat-lbl">Caméra</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
 <div class="f"><label>Preset</label><div class="pr" id="camPr">
 <button class="pb" data-s="8" data-d="90" onclick="camP(this)">Contemplatif</button>
 <button class="pb ac" data-s="18" data-d="80" onclick="camP(this)">Standard</button>
@@ -189,51 +210,43 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Vitesse</label><div class="sr"><input type="range" id="cSpd" min="3" max="50" value="18"><span class="v" id="cSpdV">18</span></div></div>
 <div class="f"><label>Distance</label><div class="sr"><input type="range" id="cDst" min="40" max="150" value="80"><span class="v" id="cDstV">80%</span></div></div>
 <div class="f"><label>Point de visée (hauteur)</label><div class="sr"><input type="range" id="cLookY" min="-20" max="20" value="0"><span class="v" id="cLookYV">0</span></div></div>
-<div class="f"><label>Mode caméra</label><select id="camMode">
-<option value="continuous" selected>Continu (fluide)</option>
-<option value="cuts">Plans enchaînés (fondu noir)</option>
-</select></div>
-<div class="f"><label>Durée par plan (s)</label><div class="sr"><input type="range" id="cutDur" min="30" max="150" value="80"><span class="v" id="cutDurV">8s</span></div></div>
-</div>
+<div class="st">Mode</div>
+<div class="f"><label>Type</label><select id="camMode"><option value="continuous" selected>Continu (fluide)</option><option value="cuts">Plans enchaînés (fondu noir)</option></select></div>
+<div class="f"><label>Durée par plan</label><div class="sr"><input type="range" id="cutDur" min="30" max="150" value="80"><span class="v" id="cutDurV">8s</span></div></div>
+</div></div>
 
-<div class="sec"><div class="st">Effets</div>
-<div class="tr"><span>Bloom (halo lumineux)</span><button class="tg" id="togBloom" onclick="this.classList.toggle('on');U()"></button></div>
-<div class="f"><label>Intensité bloom</label><div class="sr"><input type="range" id="bloomI" min="1" max="30" value="8"><span class="v" id="bloomIV">0.8</span></div></div>
+<!-- 7. EFFETS -->
+<div class="cat closed" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">✨</span><span class="cat-lbl">Effets visuels</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="tr"><span>Bloom (halo)</span><button class="tg" id="togBloom" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Intensité</label><div class="sr"><input type="range" id="bloomI" min="1" max="30" value="8"><span class="v" id="bloomIV">0.8</span></div></div>
 <div class="tr"><span>Profondeur de champ</span><button class="tg" id="togDof" onclick="this.classList.toggle('on');U()"></button></div>
-<div class="f"><label>Flou (ouverture)</label><div class="sr"><input type="range" id="dofAp" min="1" max="50" value="15"><span class="v" id="dofApV">1.5</span></div></div>
-<div class="tr"><span>Barres cinématiques</span><button class="tg on" id="togCine" onclick="this.classList.toggle('on');U()"></button></div>
-<div class="f"><label>Hauteur barres</label><div class="sr"><input type="range" id="cineH" min="2" max="12" value="5"><span class="v" id="cineHV">5%</span></div></div>
+<div class="f"><label>Flou</label><div class="sr"><input type="range" id="dofAp" min="1" max="50" value="15"><span class="v" id="dofApV">1.5</span></div></div>
+<div class="tr"><span>Barres cinéma</span><button class="tg on" id="togCine" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Hauteur</label><div class="sr"><input type="range" id="cineH" min="2" max="12" value="5"><span class="v" id="cineHV">5%</span></div></div>
 <div class="tr"><span>Grain pellicule</span><button class="tg on" id="togGrain" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Vignette</span><button class="tg on" id="togVig" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Particules</span><button class="tg on" id="togDust" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Lignes décoratives</span><button class="tg on" id="togLines" onclick="this.classList.toggle('on');U()"></button></div>
-</div>
+</div></div>
 
-<div class="sec"><div class="st">Animation textes</div>
-<div class="f"><label>Type d'animation</label><select id="txtAnim">
-<option value="fade">Fondu (fade)</option>
-<option value="slide-up">Glissement bas→haut</option>
-<option value="slide-left">Glissement droite→gauche</option>
-<option value="typewriter">Machine à écrire</option>
-<option value="none">Aucune</option>
-</select></div>
-<div class="f"><label>Durée (s)</label><div class="sr"><input type="range" id="animDur" min="5" max="40" value="20"><span class="v" id="animDurV">2.0s</span></div></div>
-</div>
-
-<div class="sec"><div class="st">Scènes live</div>
+<!-- 8. SCÈNES & CONFIG -->
+<div class="cat" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">📋</span><span class="cat-lbl">Scènes & Configuration</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="st">Scènes live</div>
 <div class="save-row"><input type="text" id="scnN" placeholder="Nom de scène…"><button onclick="saveScn()">Ajouter</button></div>
 <div class="saved-list" id="scnL"></div>
-<div class="fh" style="margin-top:4px;text-align:left;">Cliquez sur une scène pour basculer. Les scènes sont accessibles dans la popup OBS via les touches 1-9.</div>
-</div>
-
-<div class="sec"><div class="st">Configurations</div>
+<div class="fh" style="margin-top:4px;text-align:left;margin-bottom:10px;">Touches 1-9 dans la popup OBS.</div>
+<div class="st">Configurations</div>
 <div class="save-row"><input type="text" id="savN" placeholder="Nom…"><button onclick="saveC()">Sauver</button></div>
 <div class="saved-list" id="savL"></div>
 <div style="display:flex;gap:5px;margin-top:8px;">
 <button class="load-btn" style="flex:1" onclick="exportCfg()">Exporter (.json)</button>
 <button class="load-btn" style="flex:1;position:relative">Importer<input type="file" accept=".json" id="cfgImport" style="position:absolute;inset:0;opacity:0;cursor:pointer;" onchange="importCfg(this.files[0])"></button>
 </div>
-</div>
+</div></div>
 
 </div>
 <div class="pf"><button class="launch" onclick="openPopup()">Lancer la fenêtre OBS</button><div class="fh">Cliquez dans la fenêtre pour le plein écran</div></div>
@@ -718,6 +731,20 @@ renderScn();
 window.getScenes=()=>JSON.parse(localStorage.getItem('3di_scenes')||'[]');
 
 // ═══ ANIMATION ═══
+// Shot sequencer for cuts mode — shuffled, no consecutive repeats
+const NSEG=12;let shotQueue=[],lastShot=-1;
+function nextShot(){
+  if(shotQueue.length===0){
+    shotQueue=Array.from({length:NSEG},(_,i)=>i);
+    // Fisher-Yates shuffle
+    for(let i=NSEG-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shotQueue[i],shotQueue[j]]=[shotQueue[j],shotQueue[i]];}
+    // Ensure first of new batch != last of previous batch
+    if(shotQueue[0]===lastShot&&shotQueue.length>1){[shotQueue[0],shotQueue[1]]=[shotQueue[1],shotQueue[0]];}
+  }
+  lastShot=shotQueue.shift();
+  return lastShot/NSEG;
+}
+
 let cutTimer=0,cutPhase='show',fadeOvEl=null;
 const clock=new THREE.Clock();
 function anim(){
@@ -738,7 +765,7 @@ function anim(){
     }
     if(cutPhase==='fadeout'&&cutTimer>cutDurVal){
       // Jump to random position
-      cp=Math.random();
+      cp=nextShot();
       cutPhase='fadein';cutTimer=0;
       setTimeout(()=>{fadeOvEl.style.opacity='0';cutPhase='show';},100);
     }
@@ -911,10 +938,12 @@ function CR(p0,p1,p2,p3,t){var t2=t*t,t3=t2*t;return new THREE.Vector3(.5*((2*p1
 function ES(P,t){var n=P.length-1,ft=((t%1)+1)%1,s=ft*n,i=Math.floor(s),lt=s-i;function ix(k){return((k%n)+n)%n;}return CR(P[ix(i-1)],P[ix(i)],P[ix(i+1)],P[ix(i+2)],lt);}
 function getWP(){var d=${c.camDist}/100,cy=mC.y+${c.cLookY},top=cy+mH/2;return{p:[new THREE.Vector3(7*d,Math.max(.3,3.5),5*d),new THREE.Vector3(3*d,Math.max(.3,top),2.5*d),new THREE.Vector3(2*d,Math.max(.3,top+.3),4*d),new THREE.Vector3(4.5*d,Math.max(.3,.7),4*d),new THREE.Vector3(1*d,Math.max(.3,.9),6*d),new THREE.Vector3(-4*d,Math.max(.3,2.8),4*d),new THREE.Vector3(-5.5*d,Math.max(.3,cy),1*d),new THREE.Vector3(-4*d,Math.max(.3,6.5),-2*d),new THREE.Vector3(-1*d,Math.max(.3,5.5),-5*d),new THREE.Vector3(3*d,Math.max(.3,3),-5*d),new THREE.Vector3(5.5*d,Math.max(.3,cy-.3),-3*d),new THREE.Vector3(6*d,Math.max(.3,2.5),-1*d),new THREE.Vector3(7*d,Math.max(.3,3.5),5*d)],l:[new THREE.Vector3(0,cy,0),new THREE.Vector3(0,top-.6,.1),new THREE.Vector3(0,top-.4,0),new THREE.Vector3(0,cy+.8,0),new THREE.Vector3(0,cy+1,0),new THREE.Vector3(0,cy+.3,0),new THREE.Vector3(0,cy,0),new THREE.Vector3(0,cy-.3,0),new THREE.Vector3(0,cy+.5,0),new THREE.Vector3(0,cy,0),new THREE.Vector3(0,cy-.2,0),new THREE.Vector3(0,cy+.2,0),new THREE.Vector3(0,cy,0)]};}
 var cp=0,ck=new THREE.Clock(),cutT=0,cutPh='show';
+var NSEG=12,shotQ=[],lastSh=-1;
+function nextShot(){if(shotQ.length===0){shotQ=[];for(var i=0;i<NSEG;i++)shotQ.push(i);for(var i=NSEG-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=shotQ[i];shotQ[i]=shotQ[j];shotQ[j]=t;}if(shotQ[0]===lastSh&&shotQ.length>1){t=shotQ[0];shotQ[0]=shotQ[1];shotQ[1]=t;}}lastSh=shotQ.shift();return lastSh/NSEG;}
 ${c.camMode==='cuts'?`var fadeEl=document.createElement('div');fadeEl.style.cssText='position:fixed;inset:0;background:#000;z-index:15;opacity:0;pointer-events:none;transition:opacity 0.8s;';document.body.appendChild(fadeEl);`:''}
 function anim(){requestAnimationFrame(anim);var dt=ck.getDelta(),el=ck.getElapsedTime();
 if(mixer)mixer.update(dt);
-${c.camMode==='cuts'?`cutT+=dt;if(cutPh==='show'&&cutT>${c.cutDur}-0.8){cutPh='fadeout';fadeEl.style.opacity='1';}if(cutPh==='fadeout'&&cutT>${c.cutDur}){cp=Math.random();cutPh='fadein';cutT=0;setTimeout(function(){fadeEl.style.opacity='0';cutPh='show';},100);}`:''}
+${c.camMode==='cuts'?`cutT+=dt;if(cutPh==='show'&&cutT>${c.cutDur}-0.8){cutPh='fadeout';fadeEl.style.opacity='1';}if(cutPh==='fadeout'&&cutT>${c.cutDur}){cp=nextShot();cutPh='fadein';cutT=0;setTimeout(function(){fadeEl.style.opacity='0';cutPh='show';},100);}`:''}
 cp+=dt*${c.camSpd}/1000;if(cp>1)cp-=1;
 var wp=getWP(),pos=ES(wp.p,cp),lk=ES(wp.l,cp);
 pos.y=Math.max(.3,pos.y);
