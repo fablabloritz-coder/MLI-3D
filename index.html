@@ -93,6 +93,21 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="ph"><h1><span>3D</span>Intro</h1><p>Générateur d'intro live</p></div>
 <div class="ps">
 
+<!-- 0. PRESETS GLOBAUX -->
+<div class="cat" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">🎬</span><span class="cat-lbl">Preset global</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="pr" style="gap:6px">
+<button class="pb" onclick="globalP('vitrine')">Vitrine produit</button>
+<button class="pb" onclick="globalP('musee')">Musée sombre</button>
+<button class="pb" onclick="globalP('cinema')">Cinématique dorée</button>
+<button class="pb" onclick="globalP('neon')">Néon cyberpunk</button>
+<button class="pb" onclick="globalP('nature')">Nature / extérieur</button>
+<button class="pb" onclick="globalP('minimal')">Minimaliste</button>
+</div>
+<div class="fh" style="margin-top:6px;text-align:left;">Configure tout d'un coup. Vous pouvez affiner chaque paramètre ensuite.</div>
+</div></div>
+
 <!-- 1. MODÈLE -->
 <div class="cat" onclick="this.classList.toggle('closed')">
 <div class="cat-h"><span class="cat-ico">📦</span><span class="cat-lbl">Modèle & Matériau</span><span class="cat-arr">▼</span></div>
@@ -617,6 +632,79 @@ document.querySelectorAll('#P input,#P select').forEach(el=>{el.addEventListener
 
 function camP(btn){document.querySelectorAll('#camPr .pb').forEach(b=>b.classList.remove('ac'));btn.classList.add('ac');$('cSpd').value=btn.dataset.s;$('cDst').value=btn.dataset.d;U();}
 function lightP(btn){document.querySelectorAll('#lightPr .pb').forEach(b=>b.classList.remove('ac'));btn.classList.add('ac');$('cK').value=btn.dataset.kc;$('kI').value=btn.dataset.ki;$('cR').value=btn.dataset.rc;$('rI').value=btn.dataset.ri;$('aI').value=btn.dataset.ai;$('lOrb').value=btn.dataset.lo;U();}
+
+// ═══ GLOBAL PRESETS ═══
+const GPRESETS={
+  vitrine:{
+    bg:'#f5f0e8',floorC:'#e8e0d5',accent:'#3a3530',liveC:'#c0392b',
+    showFloor:true,reflectFloor:false,
+    gExp:14,keyC:'#ffffff',kI:25,kDist:15,rimC:'#f0e8dd',rI:8,l2C:'#ddeeff',l2I:6,l2Orb:120,aI:12,lOrb:30,
+    cine:false,grain:false,vig:false,dust:false,lines:false,bloom:false,dof:false,
+    hdri:'studio_small_03',hdriBg:false,hdriInt:12,tOp:90,
+    camSpd:14,camDist:80,
+  },
+  musee:{
+    bg:'#08080a',floorC:'#0e0e11',accent:'#dcc8aa',liveC:'#c0392b',
+    showFloor:true,reflectFloor:false,
+    gExp:9,keyC:'#ffeedd',kI:25,kDist:10,rimC:'#ddccaa',rI:8,l2C:'#99aabb',l2I:4,l2Orb:220,aI:3,lOrb:0,
+    cine:true,grain:true,vig:true,dust:true,lines:true,bloom:false,dof:false,
+    hdri:'',hdriBg:false,hdriInt:10,tOp:85,
+    camSpd:12,camDist:75,
+  },
+  cinema:{
+    bg:'#0a0806',floorC:'#12100c',accent:'#e8c878',liveC:'#cc6622',
+    showFloor:true,reflectFloor:true,
+    gExp:8,keyC:'#ffcc88',kI:30,kDist:12,rimC:'#ff9944',rI:10,l2C:'#884400',l2I:5,l2Orb:180,aI:2,lOrb:15,
+    cine:true,grain:true,vig:true,dust:true,lines:true,bloom:true,bloomI:12,dof:false,
+    hdri:'',hdriBg:false,hdriInt:10,tOp:85,
+    camSpd:10,camDist:70,
+  },
+  neon:{
+    bg:'#05050a',floorC:'#08081a',accent:'#e0e0ff',liveC:'#ff2266',
+    showFloor:true,reflectFloor:true,
+    gExp:8,keyC:'#ff88aa',kI:22,kDist:12,rimC:'#8844ff',rI:12,l2C:'#00ccff',l2I:10,l2Orb:120,aI:2,lOrb:0,
+    cine:true,grain:true,vig:true,dust:true,lines:true,bloom:true,bloomI:18,dof:false,
+    hdri:'',hdriBg:false,hdriInt:10,tOp:90,
+    camSpd:22,camDist:70,
+  },
+  nature:{
+    bg:'#87CEEB',floorC:'#4a7a3a',accent:'#ffffff',liveC:'#cc3333',
+    showFloor:true,reflectFloor:false,
+    gExp:12,keyC:'#fff8ee',kI:18,kDist:15,rimC:'#aaddff',rI:6,l2C:'#ffffcc',l2I:4,l2Orb:90,aI:8,lOrb:45,
+    cine:false,grain:false,vig:false,dust:false,lines:false,bloom:false,dof:true,dofAp:12,
+    hdri:'kloofendal_48d_partly_cloudy_puresky',hdriBg:true,hdriInt:14,tOp:95,
+    camSpd:15,camDist:85,
+  },
+  minimal:{
+    bg:'#1a1a1e',floorC:'#1a1a1e',accent:'#cccccc',liveC:'#cc3333',
+    showFloor:false,reflectFloor:false,
+    gExp:10,keyC:'#ffffff',kI:20,kDist:12,rimC:'#ffffff',rI:5,l2C:'#ffffff',l2I:3,l2Orb:180,aI:8,lOrb:0,
+    cine:false,grain:false,vig:false,dust:false,lines:false,bloom:false,dof:false,
+    hdri:'',hdriBg:false,hdriInt:10,tOp:80,
+    camSpd:16,camDist:80,
+  },
+};
+
+function globalP(name){
+  const p=GPRESETS[name];if(!p)return;
+  $('cB').value=p.bg;$('cF').value=p.floorC;$('cA').value=p.accent;$('cL').value=p.liveC;
+  $('tOp').value=p.tOp;
+  $('gExp').value=p.gExp;
+  $('cK').value=p.keyC;$('kI').value=p.kI;$('kDist').value=p.kDist;
+  $('cR').value=p.rimC;$('rI').value=p.rI;
+  $('cL2').value=p.l2C;$('l2I').value=p.l2I;$('l2Orb').value=p.l2Orb;
+  $('aI').value=p.aI;$('lOrb').value=p.lOrb;
+  $('cSpd').value=p.camSpd;$('cDst').value=p.camDist;
+  $('hdri').value=p.hdri;$('hdriInt').value=p.hdriInt;
+  if(p.bloomI)$('bloomI').value=p.bloomI;
+  if(p.dofAp)$('dofAp').value=p.dofAp;
+  const st=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
+  st('togFloor',p.showFloor);st('togReflect',p.reflectFloor);
+  st('togCine',p.cine);st('togGrain',p.grain);st('togVig',p.vig);st('togDust',p.dust);st('togLines',p.lines);
+  st('togBloom',p.bloom);st('togDof',p.dof);st('togHdriBg',p.hdriBg);
+  curHdriSlug='';
+  U();
+}
 
 // ═══ DROP HANDLERS ═══
 function sD(d,i,fn){d.addEventListener('click',()=>i.click());i.addEventListener('change',e=>{if(e.target.files[0])fn(e.target.files[0]);});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('dg');});d.addEventListener('dragleave',()=>d.classList.remove('dg'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('dg');if(e.dataTransfer.files[0])fn(e.dataTransfer.files[0]);});}
