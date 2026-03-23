@@ -266,7 +266,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="cat-body" onclick="event.stopPropagation()">
 <div id="aDrop" class="drop"><div class="lb">Glissez un <strong>.mp3</strong> ici</div><input type="file" accept=".mp3,.wav,.ogg,.m4a" style="display:none" id="aIn"></div>
 <div class="f" style="margin-top:6px"><label>Volume</label><div class="sr"><input type="range" id="aVol" min="0" max="100" value="50"><span class="v" id="aVolV">50%</span></div></div>
+<div class="tr"><span>Boucle</span><button class="tg on" id="togLoop" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Visualisation audio</span><button class="tg" id="togAudioViz" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Échelle visualisation</label><div class="sr"><input type="range" id="vizScale" min="20" max="200" value="80"><span class="v" id="vizScaleV">80%</span></div></div>
 <div class="fh" style="margin-top:4px;text-align:left;">La musique et la visualisation sont jouées dans la popup OBS.</div>
 </div></div>
 
@@ -357,7 +359,7 @@ window.getConfig=()=>({
   dust:$('togDust').classList.contains('on'),lines:$('togLines').classList.contains('on'),
   logoPos:$('logoPos').value,logoSz:+$('logoSz').value,logoURL:S.logoURL,
   wm:$('togWm').classList.contains('on'),wmTxt:$('wmTxt').value,wmSz:+$('wmSz').value,wmOp:+$('wmOp').value,wmPos:$('wmPos').value,
-  audioVol:+$('aVol').value,audioViz:$('togAudioViz').classList.contains('on'),audioURL:S.audioURL,
+  audioVol:+$('aVol').value,audioViz:$('togAudioViz').classList.contains('on'),audioLoop:$('togLoop').classList.contains('on'),vizScale:+$('vizScale').value,audioURL:S.audioURL,
 });
 
 // ═══ THREE.JS ═══
@@ -653,7 +655,7 @@ function U(){
   $('bloomIV').textContent=c.bloomI.toFixed(1);$('cineHV').textContent=c.cineH+'%';
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
-  $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';
+  $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';$('vizScaleV').textContent=c.vizScale+'%';
 
   // Watermark
   const wm=$('wmOv');
@@ -821,7 +823,7 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
   if(c.modScale!=null)$('modScale').value=Math.round(c.modScale*100);
@@ -831,7 +833,7 @@ function loadC_fromObj(c){
   if(c.l2I!=null)$('l2I').value=Math.round(c.l2I*10);
   if(c.cLookY!=null)$('cLookY').value=Math.round(c.cLookY*10);
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
-  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
   U();
 }
@@ -1007,7 +1009,7 @@ ${c.vig?'<div class="vg"></div>':''}${c.grain?'<div class="gr"></div>':''}
 ${c.lines?'<div class="ln lt"></div><div class="ln lb"></div>':''}
 <div id="o"><div class="tp">${tl}${tr}</div><div class="bt">${bl}${br}</div></div>
 ${c.wm&&c.wmTxt?`<div style="position:fixed;z-index:9;pointer-events:none;font-family:'Raleway',sans-serif;font-weight:200;letter-spacing:.15em;text-transform:uppercase;font-size:${c.wmSz}px;color:rgba(${ar},${ag},${ab},${c.wmOp/100});${c.wmPos==='center'?'top:50%;left:50%;transform:translate(-50%,-50%)':c.wmPos==='tl'?'top:8%;left:4vw':c.wmPos==='tr'?'top:8%;right:4vw':c.wmPos==='bl'?'bottom:8%;left:4vw':'bottom:8%;right:4vw'}">${c.wmTxt}</div>`:''}
-${c.audioViz?'<canvas id="avz" style="position:fixed;bottom:0;left:0;width:100%;height:20vh;z-index:7;pointer-events:none;"></canvas>':''}
+${c.audioViz?`<canvas id="avz" style="position:fixed;bottom:${c.cine?c.cineH+3:8}vh;left:50%;transform:translateX(-50%);width:${c.vizScale*4}px;height:${c.vizScale}px;z-index:7;pointer-events:none;"></canvas>`:''}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"><\/script>
@@ -1105,28 +1107,40 @@ document.addEventListener('keydown',function(e){
 });
 // Audio playback
 ${S.audioURL?`
-var audio=new Audio('${S.audioURL}');audio.loop=true;audio.volume=${c.audioVol/100};
+var audio=new Audio('${S.audioURL}');audio.loop=${c.audioLoop};audio.volume=${c.audioVol/100};
 document.addEventListener('click',function(){audio.play();},{once:true});
 ${c.audioViz?`
-// Audio visualizer
+// Centered waveform visualizer
 var actx=new(window.AudioContext||window.webkitAudioContext)();
 var src=actx.createMediaElementSource(audio);
-var analyser=actx.createAnalyser();analyser.fftSize=256;
+var analyser=actx.createAnalyser();analyser.fftSize=128;
 src.connect(analyser);analyser.connect(actx.destination);
 var bufLen=analyser.frequencyBinCount,dataArr=new Uint8Array(bufLen);
 var avzC=document.getElementById('avz'),avzCtx=avzC.getContext('2d');
 function drawViz(){
   requestAnimationFrame(drawViz);
   analyser.getByteFrequencyData(dataArr);
-  avzC.width=innerWidth;avzC.height=innerHeight*.2;
-  avzCtx.clearRect(0,0,avzC.width,avzC.height);
-  var barW=avzC.width/bufLen*2.5,x=0;
-  for(var i=0;i<bufLen;i++){
+  var w=${c.vizScale*4},h=${c.vizScale};
+  avzC.width=w;avzC.height=h;
+  avzCtx.clearRect(0,0,w,h);
+  var midY=h/2;
+  var totalBars=bufLen;
+  var barW=Math.max(2,w/totalBars-1);
+  var gap=1;
+  var startX=(w-(totalBars*(barW+gap)))/2;
+  for(var i=0;i<totalBars;i++){
     var v=dataArr[i]/255;
-    var h=v*avzC.height;
-    avzCtx.fillStyle='rgba(${ar},${ag},${ab},'+(0.1+v*0.4)+')';
-    avzCtx.fillRect(x,avzC.height-h,barW-1,h);
-    x+=barW;
+    var barH=Math.max(2,v*midY*0.9);
+    var x=startX+i*(barW+gap);
+    // Gradient from cyan to blue like the reference
+    var ratio=i/totalBars;
+    var r=Math.round(0+ratio*30);
+    var g=Math.round(220-ratio*80);
+    var b=Math.round(200+ratio*55);
+    avzCtx.fillStyle='rgba('+r+','+g+','+b+','+(0.4+v*0.6)+')';
+    avzCtx.beginPath();
+    avzCtx.roundRect(x,midY-barH,barW,barH*2,barW/2);
+    avzCtx.fill();
   }
 }drawViz();`:''}
 `:''}
