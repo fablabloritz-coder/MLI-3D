@@ -7,6 +7,8 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Raleway:wght@200;300;400;500&family=Instrument+Serif:ital@0;1&family=Playfair+Display:wght@400;500;600&family=Cinzel:wght@400;500;600&family=Montserrat:wght@200;300;400;500&family=Bebas+Neue&family=Oswald:wght@300;400;500&display=swap');
 :root{--bg:#111114;--p:#18181c;--pb:rgba(255,255,255,.06);--t:#c8c0b8;--d:#706a62;--b:#e8e0d8;--a:#c9a87c;--ad:rgba(201,168,124,.15);--ib:#111114;--ibo:rgba(255,255,255,.08);--r:6px;}
+body.light{--bg:#f0ede8;--p:#faf8f5;--pb:rgba(0,0,0,.08);--t:#4a453e;--d:#8a8078;--b:#1a1816;--a:#9a7a52;--ad:rgba(154,122,82,.1);--ib:#f0ede8;--ibo:rgba(0,0,0,.1);}
+.theme-btn{position:absolute;top:14px;right:16px;background:none;border:1px solid var(--pb);border-radius:var(--r);padding:4px 7px;cursor:pointer;font-size:.8rem;color:var(--d);transition:all .2s;}.theme-btn:hover{border-color:var(--a);color:var(--a);}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-size:13px;height:100vh;overflow:hidden;display:flex;}
 #P{width:350px;min-width:350px;height:100vh;background:var(--p);border-right:1px solid var(--pb);display:flex;flex-direction:column;}
@@ -90,7 +92,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </head>
 <body>
 <div id="P">
-<div class="ph"><h1><span>3D</span>Intro</h1><p>Générateur d'intro live</p></div>
+<div class="ph" style="position:relative"><h1><span>3D</span>Intro</h1><p>Générateur d'intro live</p><button class="theme-btn" onclick="document.body.classList.toggle('light');this.textContent=document.body.classList.contains('light')?'🌙':'☀️'" title="Mode clair/sombre">☀️</button></div>
 <div class="ps">
 
 <!-- 0. PRESETS GLOBAUX -->
@@ -106,6 +108,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <button class="pb" onclick="globalP('minimal')">Minimaliste</button>
 </div>
 <div class="fh" style="margin-top:6px;text-align:left;">Configure tout d'un coup. Vous pouvez affiner chaque paramètre ensuite.</div>
+<button class="load-btn" style="width:100%;margin-top:6px;color:var(--d)" onclick="globalP('musee')">⟲ Réinitialiser (valeurs par défaut)</button>
 </div></div>
 
 <!-- 1. MODÈLE -->
@@ -246,7 +249,28 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="tr"><span>Lignes décoratives</span><button class="tg on" id="togLines" onclick="this.classList.toggle('on');U()"></button></div>
 </div></div>
 
-<!-- 8. SCÈNES & CONFIG -->
+<!-- 8. WATERMARK -->
+<div class="cat closed" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">💧</span><span class="cat-lbl">Filigrane / Watermark</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="tr"><span>Afficher le filigrane</span><button class="tg" id="togWm" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Texte</label><input type="text" id="wmTxt" value="© Lycée Henri Loritz"></div>
+<div class="f"><label>Taille</label><div class="sr"><input type="range" id="wmSz" min="10" max="60" value="18"><span class="v" id="wmSzV">18</span></div></div>
+<div class="f"><label>Opacité</label><div class="sr"><input type="range" id="wmOp" min="2" max="40" value="10"><span class="v" id="wmOpV">10%</span></div></div>
+<div class="f"><label>Position</label><select id="wmPos"><option value="center">Centre</option><option value="bl" selected>Bas gauche</option><option value="br">Bas droite</option><option value="tl">Haut gauche</option><option value="tr">Haut droite</option></select></div>
+</div></div>
+
+<!-- 9. MUSIQUE -->
+<div class="cat closed" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">🔊</span><span class="cat-lbl">Musique & Audio</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div id="aDrop" class="drop"><div class="lb">Glissez un <strong>.mp3</strong> ici</div><input type="file" accept=".mp3,.wav,.ogg,.m4a" style="display:none" id="aIn"></div>
+<div class="f" style="margin-top:6px"><label>Volume</label><div class="sr"><input type="range" id="aVol" min="0" max="100" value="50"><span class="v" id="aVolV">50%</span></div></div>
+<div class="tr"><span>Visualisation audio</span><button class="tg" id="togAudioViz" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="fh" style="margin-top:4px;text-align:left;">La musique et la visualisation sont jouées dans la popup OBS.</div>
+</div></div>
+
+<!-- 10. SCÈNES & CONFIG -->
 <div class="cat" onclick="this.classList.toggle('closed')">
 <div class="cat-h"><span class="cat-ico">📋</span><span class="cat-lbl">Scènes & Configuration</span><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
@@ -286,6 +310,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="ov-br" id="oBR"><div class="ov-brt" id="oBRT">La diffusion va commencer…</div></div>
 </div>
 </div>
+<div id="wmOv" style="position:absolute;z-index:9;pointer-events:none;font-family:'Raleway',sans-serif;font-weight:200;letter-spacing:.15em;text-transform:uppercase;display:none;"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -306,7 +331,7 @@ const h2r=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.sli
 const HDRI_BASE='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/';
 
 // ═══ STATE ═══
-const S={modelBuf:null,modelName:'',modelType:'glb',logoURL:null,bgURL:null,curMat:'original',origMats:[],customHdriBuf:null,scenes:[],baseScale:1};
+const S={modelBuf:null,modelName:'',modelType:'glb',logoURL:null,bgURL:null,curMat:'original',origMats:[],customHdriBuf:null,scenes:[],baseScale:1,audioURL:null,audioName:''};
 window.getState=()=>S;
 window.getConfig=()=>({
   title:$('tT').value,sub:$('tS').value,bl:$('tBL').value,br:$('tBR').value,live:$('tLV').value,
@@ -331,6 +356,8 @@ window.getConfig=()=>({
   grain:$('togGrain').classList.contains('on'),vig:$('togVig').classList.contains('on'),
   dust:$('togDust').classList.contains('on'),lines:$('togLines').classList.contains('on'),
   logoPos:$('logoPos').value,logoSz:+$('logoSz').value,logoURL:S.logoURL,
+  wm:$('togWm').classList.contains('on'),wmTxt:$('wmTxt').value,wmSz:+$('wmSz').value,wmOp:+$('wmOp').value,wmPos:$('wmPos').value,
+  audioVol:+$('aVol').value,audioViz:$('togAudioViz').classList.contains('on'),audioURL:S.audioURL,
 });
 
 // ═══ THREE.JS ═══
@@ -626,6 +653,20 @@ function U(){
   $('bloomIV').textContent=c.bloomI.toFixed(1);$('cineHV').textContent=c.cineH+'%';
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
+  $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';
+
+  // Watermark
+  const wm=$('wmOv');
+  if(c.wm&&c.wmTxt){
+    wm.style.display='block';wm.textContent=c.wmTxt;
+    wm.style.fontSize=c.wmSz+'px';wm.style.color=`rgba(${ar},${ag},${ab},${c.wmOp/100})`;
+    const wp=c.wmPos;
+    wm.style.top=wp==='tl'||wp==='tr'?'8%':'';wm.style.bottom=wp==='bl'||wp==='br'?'8%':'';
+    wm.style.left=wp==='tl'||wp==='bl'?'4vw':(wp==='center'?'50%':'');
+    wm.style.right=wp==='tr'||wp==='br'?'4vw':'';
+    wm.style.transform=wp==='center'?'translateX(-50%)':'';
+    if(wp==='center'){wm.style.top='50%';wm.style.transform='translate(-50%,-50%)';}
+  }else{wm.style.display='none';}
 }
 
 document.querySelectorAll('#P input,#P select').forEach(el=>{el.addEventListener('input',U);el.addEventListener('change',U);});
@@ -733,8 +774,15 @@ sD($('hdriDrop'),$('hdriIn'),f=>{const r=new FileReader();r.onload=e=>{
   aRB($('hdriDrop'),()=>{S.customHdriBuf=null;curHdriSlug='';$('hdriDrop').classList.remove('ld');$('hdriDrop').querySelector('.lb').innerHTML='HDRI personnalisé (<strong>.hdr</strong>)';const b=$('hdriDrop').querySelector('.rb');if(b)b.remove();$('hdriCustomOpt').disabled=true;$('hdriCustomOpt').textContent='— charger ci-dessous —';if($('hdri').value==='custom')$('hdri').value='';U();});
   U();};r.readAsArrayBuffer(f);});
 
+// Audio drop
+sD($('aDrop'),$('aIn'),f=>{const r=new FileReader();r.onload=e=>{
+  S.audioURL=e.target.result;S.audioName=f.name;
+  $('aDrop').classList.add('ld');$('aDrop').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
+  aRB($('aDrop'),()=>{S.audioURL=null;S.audioName='';$('aDrop').classList.remove('ld');$('aDrop').querySelector('.lb').innerHTML='Glissez un <strong>.mp3</strong> ici';const b=$('aDrop').querySelector('.rb');if(b)b.remove();});
+};r.readAsDataURL(f);});
+
 // ═══ SAVE / LOAD ═══
-function getCV(){const c=window.getConfig();delete c.logoURL;return c;}
+function getCV(){const c=window.getConfig();delete c.logoURL;delete c.audioURL;return c;}
 function saveC(){const n=$('savN').value.trim();if(!n)return;const s=JSON.parse(localStorage.getItem('3di_saves')||'{}');s[n]=getCV();localStorage.setItem('3di_saves',JSON.stringify(s));$('savN').value='';renderS();}
 function loadC(n){const s=JSON.parse(localStorage.getItem('3di_saves')||'{}'),c=s[n];if(!c)return;
 const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz'};
@@ -773,7 +821,7 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
   if(c.modScale!=null)$('modScale').value=Math.round(c.modScale*100);
@@ -783,7 +831,7 @@ function loadC_fromObj(c){
   if(c.l2I!=null)$('l2I').value=Math.round(c.l2I*10);
   if(c.cLookY!=null)$('cLookY').value=Math.round(c.cLookY*10);
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
-  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
   U();
 }
@@ -958,6 +1006,8 @@ ${c.cine?'<div class="cn ct"></div><div class="cn cb"></div>':''}
 ${c.vig?'<div class="vg"></div>':''}${c.grain?'<div class="gr"></div>':''}
 ${c.lines?'<div class="ln lt"></div><div class="ln lb"></div>':''}
 <div id="o"><div class="tp">${tl}${tr}</div><div class="bt">${bl}${br}</div></div>
+${c.wm&&c.wmTxt?`<div style="position:fixed;z-index:9;pointer-events:none;font-family:'Raleway',sans-serif;font-weight:200;letter-spacing:.15em;text-transform:uppercase;font-size:${c.wmSz}px;color:rgba(${ar},${ag},${ab},${c.wmOp/100});${c.wmPos==='center'?'top:50%;left:50%;transform:translate(-50%,-50%)':c.wmPos==='tl'?'top:8%;left:4vw':c.wmPos==='tr'?'top:8%;right:4vw':c.wmPos==='bl'?'bottom:8%;left:4vw':'bottom:8%;right:4vw'}">${c.wmTxt}</div>`:''}
+${c.audioViz?'<canvas id="avz" style="position:fixed;bottom:0;left:0;width:100%;height:20vh;z-index:7;pointer-events:none;"></canvas>':''}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"><\/script>
@@ -1053,6 +1103,33 @@ document.addEventListener('keydown',function(e){
   setTimeout(function(){si.classList.remove('sh');},2000);
   try{window.opener.loadScn(k-1);}catch(ex){}
 });
+// Audio playback
+${S.audioURL?`
+var audio=new Audio('${S.audioURL}');audio.loop=true;audio.volume=${c.audioVol/100};
+document.addEventListener('click',function(){audio.play();},{once:true});
+${c.audioViz?`
+// Audio visualizer
+var actx=new(window.AudioContext||window.webkitAudioContext)();
+var src=actx.createMediaElementSource(audio);
+var analyser=actx.createAnalyser();analyser.fftSize=256;
+src.connect(analyser);analyser.connect(actx.destination);
+var bufLen=analyser.frequencyBinCount,dataArr=new Uint8Array(bufLen);
+var avzC=document.getElementById('avz'),avzCtx=avzC.getContext('2d');
+function drawViz(){
+  requestAnimationFrame(drawViz);
+  analyser.getByteFrequencyData(dataArr);
+  avzC.width=innerWidth;avzC.height=innerHeight*.2;
+  avzCtx.clearRect(0,0,avzC.width,avzC.height);
+  var barW=avzC.width/bufLen*2.5,x=0;
+  for(var i=0;i<bufLen;i++){
+    var v=dataArr[i]/255;
+    var h=v*avzC.height;
+    avzCtx.fillStyle='rgba(${ar},${ag},${ab},'+(0.1+v*0.4)+')';
+    avzCtx.fillRect(x,avzC.height-h,barW-1,h);
+    x+=barW;
+  }
+}drawViz();`:''}
+`:''}
 <\/script></body></html>`;
 }
 
