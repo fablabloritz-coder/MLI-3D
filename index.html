@@ -480,24 +480,25 @@ SLOTS[0].group=G;SLOTS[1].group=G1;SLOTS[2].group=G2;
 const lightRig=new THREE.Group(); // lights rotate around this
 let mC=new THREE.Vector3(0,2.2,0),mH=4.4,mW=2;
 
-// Recalculate scene bounds from ALL loaded model slots
+// Recalculate scene bounds — camera follows slot 0, width includes all
 function updateSceneBounds(){
-  const box=new THREE.Box3();
-  let hasModel=false;
+  // Camera center = slot 0 only
+  const gr0=SLOTS[0].group;
+  if(gr0&&gr0.children.length>0){
+    const b0=new THREE.Box3().setFromObject(gr0);
+    mC=b0.getCenter(new THREE.Vector3());
+    mH=b0.max.y-b0.min.y;
+  }else{mC.set(0,2.2,0);mH=4.4;}
+  // Scene width = all slots (for camera distance)
+  const box=new THREE.Box3();let hasAny=false;
   for(let i=0;i<3;i++){
     const gr=SLOTS[i].group;
     if(gr&&gr.children.length>0){
       const b=new THREE.Box3().setFromObject(gr);
-      if(hasModel)box.union(b); else{box.copy(b);hasModel=true;}
+      if(hasAny)box.union(b);else{box.copy(b);hasAny=true;}
     }
   }
-  if(hasModel){
-    mC=box.getCenter(new THREE.Vector3());
-    mH=box.max.y-box.min.y;
-    const sz=box.getSize(new THREE.Vector3());
-    mW=Math.max(sz.x,sz.z,2);// scene width for camera distance
-  }else{mC.set(0,2.2,0);mH=4.4;mW=2;}
-  // Update all light targets to combined center
+  if(hasAny){const sz=box.getSize(new THREE.Vector3());mW=Math.max(sz.x,sz.z,2);}else{mW=2;}
   if(typeof kL!=='undefined'){kL.target.position.set(mC.x,mC.y,mC.z);rL.target.position.set(mC.x,mC.y+0.3,mC.z);fL.target.position.set(mC.x,mC.y,mC.z);l2.target.position.set(mC.x,mC.y,mC.z);}
 }
 
@@ -575,7 +576,8 @@ const stlLoader=new THREE.STLLoader();
 
 function loadModelSlot(slotIdx,buf,type){
   const sl=SLOTS[slotIdx],gr=sl.group;
-  while(gr.children.length)gr.remove(gr.children[0]);
+  // Clear old model and _baseScale
+  while(gr.children.length){const ch=gr.children[0];if(ch.userData)delete ch.userData._baseScale;gr.remove(ch);}
   sl.origMats=[];sl.mixer=null;
 
   if(type==='stl'){
@@ -862,8 +864,8 @@ function selSlot(idx,btn){
     dropEl.classList.remove('ld');dropEl.querySelector('.lb').innerHTML='Glissez un <strong>.glb / .stl</strong> ici';
   }
   // Restore controls
-  const cfg=sl._cfg||{scale:100,rot:0,posX:0,posZ:0,spin:0};
-  $('sScale').value=Math.round(cfg.scale*100)||100;
+  const cfg=sl._cfg||{scale:1,rot:0,posX:0,posZ:0,spin:0};
+  $('sScale').value=Math.round(cfg.scale*100);
   $('sRot').value=cfg.rot||0;
   $('sPosX').value=Math.round((cfg.posX||0)*10);
   $('sPosZ').value=Math.round((cfg.posZ||0)*10);
@@ -956,7 +958,12 @@ sD($('sDrop0'),$('sIn0'),f=>{
   sl.name=f.name;
   sl.type=f.name.toLowerCase().endsWith('.stl')?'stl':'glb';
   const r=new FileReader();
-  r.onload=e=>{sl.buf=e.target.result;loadModelSlot(activeSlot,e.target.result,sl.type);};
+  r.onload=e=>{
+    sl.buf=e.target.result;
+    sl._cfg={scale:1,rot:0,posX:0,posZ:0,spin:0};// reset to defaults
+    $('sScale').value=100;$('sRot').value=0;$('sPosX').value=0;$('sPosZ').value=0;$('sSpin').value=0;
+    loadModelSlot(activeSlot,e.target.result,sl.type);
+  };
   r.readAsArrayBuffer(f);
   $('sDrop0').classList.add('ld');$('sDrop0').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
   aRB($('sDrop0'),()=>{
@@ -1374,14 +1381,6 @@ fTimes.push(performance.now());if(fTimes.length>60){fTimes.shift();var avg=60000
 ${(c.bloom||c.dof)?'comp.render();':'R.render(scene,camera);'}}anim();
 addEventListener('resize',function(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);${(c.bloom||c.dof)?'comp.setSize(innerWidth,innerHeight);':''}});
 document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement){document.body.classList.remove('lv');document.getElementById('fs').classList.remove('g');}});
-// Recalculate scene bounds after all models loaded
-setTimeout(function(){
-  var box=new THREE.Box3();var has=false;
-  scene.traverse(function(o){if(o.isMesh&&!o.geometry.type.includes('Circle')&&!o.geometry.type.includes('Buffer')){
-    var b=new THREE.Box3().setFromObject(o);if(has)box.union(b);else{box.copy(b);has=true;}
-  }});
-  if(has){mC=box.getCenter(new THREE.Vector3());mH=box.max.y-box.min.y;}
-},2000);
 document.addEventListener('keydown',function(e){
   var k=parseInt(e.key);if(isNaN(k)||k<1||k>9)return;
   var scenes=null;try{scenes=window.opener&&window.opener.getScenes&&window.opener.getScenes();}catch(ex){}
@@ -1479,10 +1478,10 @@ function pulseLights(){
   var delta=bass-prevBassAvg;
   if(delta>SENS*0.04&&bass>0.12&&beatCooldown<=0){
     beatDecay=1.0;
-    beatCooldown=18;
-    ${c.lightPulse==='multi'?`pColorIdx=(pColorIdx+1)%pColors.length;`:''}
+    beatCooldown=30;
+    pColorIdx=(pColorIdx+1)%pColors.length;
   }
-  beatDecay*=0.96;
+  beatDecay*=0.97;
   var pI=${c.pulseInt}*beatDecay;
   var cc=pColors[pColorIdx];
   for(var hi=0;hi<haloLights.length;hi++){
