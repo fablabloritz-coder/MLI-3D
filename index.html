@@ -1486,10 +1486,7 @@ function pulseLights(){
   var pI=${c.pulseInt}*beatDecay;
   var cc=pColors[pColorIdx];
   for(var hi=0;hi<haloLights.length;hi++){
-    ${c.lightPulse==='multi'?`
-    var ci=pColors[(pColorIdx+hi)%pColors.length];
-    haloLights[hi].color.setRGB(ci.r,ci.g,ci.b);
-    `:`haloLights[hi].color.setRGB(cc.r,cc.g,cc.b);`}
+    haloLights[hi].color.setRGB(cc.r,cc.g,cc.b);
     haloLights[hi].intensity=pI;
   }
 }pulseLights();`:''}
