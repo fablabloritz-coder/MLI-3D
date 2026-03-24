@@ -478,7 +478,28 @@ const G1=new THREE.Group(); // slot 1
 const G2=new THREE.Group(); // slot 2
 SLOTS[0].group=G;SLOTS[1].group=G1;SLOTS[2].group=G2;
 const lightRig=new THREE.Group(); // lights rotate around this
-let mC=new THREE.Vector3(0,2.2,0),mH=4.4;
+let mC=new THREE.Vector3(0,2.2,0),mH=4.4,mW=2;
+
+// Recalculate scene bounds from ALL loaded model slots
+function updateSceneBounds(){
+  const box=new THREE.Box3();
+  let hasModel=false;
+  for(let i=0;i<3;i++){
+    const gr=SLOTS[i].group;
+    if(gr&&gr.children.length>0){
+      const b=new THREE.Box3().setFromObject(gr);
+      if(hasModel)box.union(b); else{box.copy(b);hasModel=true;}
+    }
+  }
+  if(hasModel){
+    mC=box.getCenter(new THREE.Vector3());
+    mH=box.max.y-box.min.y;
+    const sz=box.getSize(new THREE.Vector3());
+    mW=Math.max(sz.x,sz.z,2);// scene width for camera distance
+  }else{mC.set(0,2.2,0);mH=4.4;mW=2;}
+  // Update all light targets to combined center
+  if(typeof kL!=='undefined'){kL.target.position.set(mC.x,mC.y,mC.z);rL.target.position.set(mC.x,mC.y+0.3,mC.z);fL.target.position.set(mC.x,mC.y,mC.z);l2.target.position.set(mC.x,mC.y,mC.z);}
+}
 
 function buildDef(){
   while(G.children.length)G.remove(G.children[0]);
@@ -545,7 +566,7 @@ function updatePtsTex(){
 // ═══ SPLINE CAMERA ═══
 function cr(p0,p1,p2,p3,t){const t2=t*t,t3=t2*t;return new THREE.Vector3(.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3),.5*((2*p1.z)+(-p0.z+p2.z)*t+(2*p0.z-5*p1.z+4*p2.z-p3.z)*t2+(-p0.z+3*p1.z-3*p2.z+p3.z)*t3));}
 function es(P,t){const n=P.length-1,ft=((t%1)+1)%1,s=ft*n,i=Math.floor(s),lt=s-i,ix=k=>((k%n)+n)%n;return cr(P[ix(i-1)],P[ix(i)],P[ix(i+1)],P[ix(i+2)],lt);}
-function getWP(d,lookYOff){d/=100;const cy=mC.y+lookYOff,top=cy+mH/2;return{p:[new THREE.Vector3(7*d,Math.max(.3,3.5),5*d),new THREE.Vector3(3*d,Math.max(.3,top),2.5*d),new THREE.Vector3(2*d,Math.max(.3,top+.3),4*d),new THREE.Vector3(4.5*d,Math.max(.3,.7),4*d),new THREE.Vector3(1*d,Math.max(.3,.9),6*d),new THREE.Vector3(-4*d,Math.max(.3,2.8),4*d),new THREE.Vector3(-5.5*d,Math.max(.3,cy),1*d),new THREE.Vector3(-4*d,Math.max(.3,6.5),-2*d),new THREE.Vector3(-1*d,Math.max(.3,5.5),-5*d),new THREE.Vector3(3*d,Math.max(.3,3),-5*d),new THREE.Vector3(5.5*d,Math.max(.3,cy-.3),-3*d),new THREE.Vector3(6*d,Math.max(.3,2.5),-1*d),new THREE.Vector3(7*d,Math.max(.3,3.5),5*d)],l:[new THREE.Vector3(0,cy,0),new THREE.Vector3(0,top-.6,.1),new THREE.Vector3(0,top-.4,0),new THREE.Vector3(0,cy+.8,0),new THREE.Vector3(0,cy+1,0),new THREE.Vector3(0,cy+.3,0),new THREE.Vector3(0,cy,0),new THREE.Vector3(0,cy-.3,0),new THREE.Vector3(0,cy+.5,0),new THREE.Vector3(0,cy,0),new THREE.Vector3(0,cy-.2,0),new THREE.Vector3(0,cy+.2,0),new THREE.Vector3(0,cy,0)]};}
+function getWP(d,lookYOff){d/=100;const ws=Math.max(1,mW/2);d*=ws;const cy=mC.y+lookYOff,top=cy+mH/2,cx=mC.x,cz=mC.z;return{p:[new THREE.Vector3(cx+7*d,Math.max(.3,3.5),cz+5*d),new THREE.Vector3(cx+3*d,Math.max(.3,top),cz+2.5*d),new THREE.Vector3(cx+2*d,Math.max(.3,top+.3),cz+4*d),new THREE.Vector3(cx+4.5*d,Math.max(.3,.7),cz+4*d),new THREE.Vector3(cx+1*d,Math.max(.3,.9),cz+6*d),new THREE.Vector3(cx-4*d,Math.max(.3,2.8),cz+4*d),new THREE.Vector3(cx-5.5*d,Math.max(.3,cy),cz+1*d),new THREE.Vector3(cx-4*d,Math.max(.3,6.5),cz-2*d),new THREE.Vector3(cx-1*d,Math.max(.3,5.5),cz-5*d),new THREE.Vector3(cx+3*d,Math.max(.3,3),cz-5*d),new THREE.Vector3(cx+5.5*d,Math.max(.3,cy-.3),cz-3*d),new THREE.Vector3(cx+6*d,Math.max(.3,2.5),cz-1*d),new THREE.Vector3(cx+7*d,Math.max(.3,3.5),cz+5*d)],l:[new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,top-.6,cz+.1),new THREE.Vector3(cx,top-.4,cz),new THREE.Vector3(cx,cy+.8,cz),new THREE.Vector3(cx,cy+1,cz),new THREE.Vector3(cx,cy+.3,cz),new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,cy-.3,cz),new THREE.Vector3(cx,cy+.5,cz),new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,cy-.2,cz),new THREE.Vector3(cx,cy+.2,cz),new THREE.Vector3(cx,cy,cz)]};}
 let cp=0;
 
 // ═══ GLB LOADER ═══
@@ -568,7 +589,7 @@ function loadModelSlot(slotIdx,buf,type){
     mesh.castShadow=mesh.receiveShadow=true;
     sl.origMats.push({mesh:mesh,mat:mesh.material.clone()});
     gr.add(mesh);
-    if(slotIdx===0){const fb=new THREE.Box3().setFromObject(gr);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;}
+    updateSceneBounds();
     if(slotIdx===0)applyMat(S.curMat);
     return;
   }
@@ -580,7 +601,7 @@ function loadModelSlot(slotIdx,buf,type){
     m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;
     m.traverse(c=>{if(c.isMesh){c.castShadow=c.receiveShadow=true;sl.origMats.push({mesh:c,mat:c.material.clone()});}});
     gr.add(m);
-    if(slotIdx===0){const fb=new THREE.Box3().setFromObject(gr);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;}
+    updateSceneBounds();
     if(g.animations&&g.animations.length>0){
       sl.mixer=new THREE.AnimationMixer(m);
       g.animations.forEach(clip=>sl.mixer.clipAction(clip).play());
@@ -712,6 +733,7 @@ function U(){
     gr.position.x=scfg.posX;
     gr.position.z=scfg.posZ;
   }
+  updateSceneBounds();
   // Global exposure (override HDRI exposure if no HDRI)
   if(!c.hdri)R.toneMappingExposure=c.gExp;
 
@@ -1324,14 +1346,14 @@ var haloLights=[];
 for(var hi=0;hi<6;hi++){
   var ha=hi*Math.PI*2/6;
   var hl=new THREE.SpotLight(parseInt('${c.keyC}'.slice(1),16),0,12,Math.PI/3,.8,1.5);
-  hl.position.set(Math.sin(ha)*5,(mC.y||2.2)+1,Math.cos(ha)*5);
-  hl.target.position.set(0,mC.y||2.2,0);
+  hl.position.set(mC.x+Math.sin(ha)*5,(mC.y||2.2)+1,mC.z+Math.cos(ha)*5);
+  hl.target.position.set(mC.x,mC.y||2.2,mC.z);
   scene.add(hl);scene.add(hl.target);haloLights.push(hl);
 }`:''}
 ${hdriCode}
 ${c.dust?`var PC=${c.dustCount},pG=new THREE.BufferGeometry(),pA=new Float32Array(PC*3),pS=new Float32Array(PC),pD=new Float32Array(PC);for(var i=0;i<PC;i++){pA[i*3]=(Math.random()-.5)*14;pA[i*3+1]=Math.random()*8;pA[i*3+2]=(Math.random()-.5)*14;pS[i]=.003+Math.random()*.006;pD[i]=Math.random()*Math.PI*2;}pG.setAttribute('position',new THREE.BufferAttribute(pA,3));var ptMat=new THREE.PointsMaterial({color:0xddc8aa,size:${c.dustSize},transparent:true,opacity:.25,sizeAttenuation:true});${S.particleURL?`var ptTex=new THREE.TextureLoader().load('${S.particleURL}');ptMat.map=ptTex;ptMat.alphaMap=ptTex;ptMat.alphaTest=0.01;`:''}scene.add(new THREE.Points(pG,ptMat));`:''}function CR(p0,p1,p2,p3,t){var t2=t*t,t3=t2*t;return new THREE.Vector3(.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3),.5*((2*p1.z)+(-p0.z+p2.z)*t+(2*p0.z-5*p1.z+4*p2.z-p3.z)*t2+(-p0.z+3*p1.z-3*p2.z+p3.z)*t3));}
 function ES(P,t){var n=P.length-1,ft=((t%1)+1)%1,s=ft*n,i=Math.floor(s),lt=s-i;function ix(k){return((k%n)+n)%n;}return CR(P[ix(i-1)],P[ix(i)],P[ix(i+1)],P[ix(i+2)],lt);}
-function getWP(){var d=${c.camDist}/100,cy=mC.y+${c.cLookY},top=cy+mH/2;return{p:[new THREE.Vector3(7*d,Math.max(.3,3.5),5*d),new THREE.Vector3(3*d,Math.max(.3,top),2.5*d),new THREE.Vector3(2*d,Math.max(.3,top+.3),4*d),new THREE.Vector3(4.5*d,Math.max(.3,.7),4*d),new THREE.Vector3(1*d,Math.max(.3,.9),6*d),new THREE.Vector3(-4*d,Math.max(.3,2.8),4*d),new THREE.Vector3(-5.5*d,Math.max(.3,cy),1*d),new THREE.Vector3(-4*d,Math.max(.3,6.5),-2*d),new THREE.Vector3(-1*d,Math.max(.3,5.5),-5*d),new THREE.Vector3(3*d,Math.max(.3,3),-5*d),new THREE.Vector3(5.5*d,Math.max(.3,cy-.3),-3*d),new THREE.Vector3(6*d,Math.max(.3,2.5),-1*d),new THREE.Vector3(7*d,Math.max(.3,3.5),5*d)],l:[new THREE.Vector3(0,cy,0),new THREE.Vector3(0,top-.6,.1),new THREE.Vector3(0,top-.4,0),new THREE.Vector3(0,cy+.8,0),new THREE.Vector3(0,cy+1,0),new THREE.Vector3(0,cy+.3,0),new THREE.Vector3(0,cy,0),new THREE.Vector3(0,cy-.3,0),new THREE.Vector3(0,cy+.5,0),new THREE.Vector3(0,cy,0),new THREE.Vector3(0,cy-.2,0),new THREE.Vector3(0,cy+.2,0),new THREE.Vector3(0,cy,0)]};}
+function getWP(){var d=${c.camDist}/100,cy=mC.y+${c.cLookY},top=cy+mH/2,cx=mC.x,cz=mC.z;return{p:[new THREE.Vector3(cx+7*d,Math.max(.3,3.5),cz+5*d),new THREE.Vector3(cx+3*d,Math.max(.3,top),cz+2.5*d),new THREE.Vector3(cx+2*d,Math.max(.3,top+.3),cz+4*d),new THREE.Vector3(cx+4.5*d,Math.max(.3,.7),cz+4*d),new THREE.Vector3(cx+1*d,Math.max(.3,.9),cz+6*d),new THREE.Vector3(cx-4*d,Math.max(.3,2.8),cz+4*d),new THREE.Vector3(cx-5.5*d,Math.max(.3,cy),cz+1*d),new THREE.Vector3(cx-4*d,Math.max(.3,6.5),cz-2*d),new THREE.Vector3(cx-1*d,Math.max(.3,5.5),cz-5*d),new THREE.Vector3(cx+3*d,Math.max(.3,3),cz-5*d),new THREE.Vector3(cx+5.5*d,Math.max(.3,cy-.3),cz-3*d),new THREE.Vector3(cx+6*d,Math.max(.3,2.5),cz-1*d),new THREE.Vector3(cx+7*d,Math.max(.3,3.5),cz+5*d)],l:[new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,top-.6,cz+.1),new THREE.Vector3(cx,top-.4,cz),new THREE.Vector3(cx,cy+.8,cz),new THREE.Vector3(cx,cy+1,cz),new THREE.Vector3(cx,cy+.3,cz),new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,cy-.3,cz),new THREE.Vector3(cx,cy+.5,cz),new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,cy-.2,cz),new THREE.Vector3(cx,cy+.2,cz),new THREE.Vector3(cx,cy,cz)]};}
 var cp=0,ck=new THREE.Clock(),cutT=0,cutPh='show';
 var NSEG=12,shotQ=[],lastSh=-1;
 function nextShot(){if(shotQ.length===0){shotQ=[];for(var i=0;i<NSEG;i++)shotQ.push(i);for(var i=NSEG-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=shotQ[i];shotQ[i]=shotQ[j];shotQ[j]=t;}if(shotQ[0]===lastSh&&shotQ.length>1){t=shotQ[0];shotQ[0]=shotQ[1];shotQ[1]=t;}}lastSh=shotQ.shift();return lastSh/NSEG;}
@@ -1347,10 +1369,19 @@ ${c.slots[0].spin>0?`G.rotation.y+=${c.slots[0].spin}/100*dt;`:''}
 ${c.dof?`bkp.uniforms['focus'].value=camera.position.distanceTo(mC);`:''}
 ${c.dust?`var pa=pG.attributes.position.array;for(var i=0;i<PC;i++){pa[i*3+1]+=pS[i]*dt*6;pa[i*3]+=Math.sin(el*.4+pD[i])*.0004;pa[i*3+2]+=Math.cos(el*.3+pD[i])*.0003;if(pa[i*3+1]>8){pa[i*3+1]=-.5;pa[i*3]=(Math.random()-.5)*14;pa[i*3+2]=(Math.random()-.5)*14;}}pG.attributes.position.needsUpdate=true;`:''}
 kL.intensity=${c.keyI}+Math.sin(el*.6)*.1+Math.sin(el*1.1)*.06;rL.intensity=${c.rimI}+Math.sin(el*.4+1)*.08;
+kL.target.position.set(mC.x,mC.y,mC.z);fL.target.position.set(mC.x,mC.y,mC.z);rL.target.position.set(mC.x,mC.y+.3,mC.z);l2.target.position.set(mC.x,mC.y,mC.z);
 fTimes.push(performance.now());if(fTimes.length>60){fTimes.shift();var avg=60000/(fTimes[fTimes.length-1]-fTimes[0]);if(avg<25&&adaptPR>.75){adaptPR=Math.max(.5,adaptPR-.25);R.setPixelRatio(adaptPR);}else if(avg>55&&adaptPR<Math.min(devicePixelRatio,2)){adaptPR=Math.min(Math.min(devicePixelRatio,2),adaptPR+.125);R.setPixelRatio(adaptPR);}}
 ${(c.bloom||c.dof)?'comp.render();':'R.render(scene,camera);'}}anim();
 addEventListener('resize',function(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);${(c.bloom||c.dof)?'comp.setSize(innerWidth,innerHeight);':''}});
 document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement){document.body.classList.remove('lv');document.getElementById('fs').classList.remove('g');}});
+// Recalculate scene bounds after all models loaded
+setTimeout(function(){
+  var box=new THREE.Box3();var has=false;
+  scene.traverse(function(o){if(o.isMesh&&!o.geometry.type.includes('Circle')&&!o.geometry.type.includes('Buffer')){
+    var b=new THREE.Box3().setFromObject(o);if(has)box.union(b);else{box.copy(b);has=true;}
+  }});
+  if(has){mC=box.getCenter(new THREE.Vector3());mH=box.max.y-box.min.y;}
+},2000);
 document.addEventListener('keydown',function(e){
   var k=parseInt(e.key);if(isNaN(k)||k<1||k>9)return;
   var scenes=null;try{scenes=window.opener&&window.opener.getScenes&&window.opener.getScenes();}catch(ex){}
