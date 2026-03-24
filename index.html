@@ -250,6 +250,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="tr"><span>Particules</span><button class="tg on" id="togDust" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Nombre de particules</label><div class="sr"><input type="range" id="dustCount" min="50" max="1500" value="400" step="50"><span class="v" id="dustCountV">400</span></div></div>
 <div class="tr"><span>Lignes décoratives</span><button class="tg on" id="togLines" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Position lignes (%)</label><div class="sr"><input type="range" id="linePos" min="5" max="25" value="11"><span class="v" id="linePosV">11%</span></div></div>
 </div></div>
 
 <!-- 8. WATERMARK -->
@@ -272,7 +273,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="tr"><span>Boucle</span><button class="tg on" id="togLoop" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Visualisation audio</span><button class="tg" id="togAudioViz" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Échelle visualisation</label><div class="sr"><input type="range" id="vizScale" min="20" max="200" value="80"><span class="v" id="vizScaleV">80%</span></div></div>
-<div class="cr"><input type="color" id="vizColor" value="#00ddcc"><label>Couleur visualisation</label></div>
+<div class="cr"><input type="color" id="vizColor" value="#dcc8aa"><label>Couleur visualisation</label></div>
 <div class="st">Réactivité musicale</div>
 <div class="f"><label>Pulsation lumière</label><select id="lightPulse">
 <option value="none">Désactivée</option>
@@ -280,6 +281,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <option value="multi">Multi-couleurs</option>
 </select></div>
 <div class="f"><label>Intensité pulsation</label><div class="sr"><input type="range" id="pulseInt" min="0" max="30" value="10"><span class="v" id="pulseIntV">10</span></div></div>
+<div class="f"><label>Sensibilité (seuil)</label><div class="sr"><input type="range" id="pulseSens" min="1" max="20" value="8"><span class="v" id="pulseSensV">8</span></div></div>
 <div class="tr"><span>Afficher nom du morceau</span><button class="tg" id="togTrackName" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="fh" style="margin-top:4px;text-align:left;">La musique et la visualisation sont jouées dans la popup OBS.</div>
 </div></div>
@@ -373,7 +375,8 @@ window.getConfig=()=>({
   logoPos:$('logoPos').value,logoSz:+$('logoSz').value,logoURL:S.logoURL,
   wm:$('togWm').classList.contains('on'),wmTxt:$('wmTxt').value,wmSz:+$('wmSz').value,wmOp:+$('wmOp').value,wmPos:$('wmPos').value,
   audioVol:+$('aVol').value,audioViz:$('togAudioViz').classList.contains('on'),audioLoop:$('togLoop').classList.contains('on'),vizScale:+$('vizScale').value,vizColor:$('vizColor').value,
-  lightPulse:$('lightPulse').value,pulseInt:+$('pulseInt').value/10,showTrackName:$('togTrackName').classList.contains('on'),audioURL:S.audioURL,
+  lightPulse:$('lightPulse').value,pulseInt:+$('pulseInt').value/10,pulseSens:+$('pulseSens').value/10,showTrackName:$('togTrackName').classList.contains('on'),audioURL:S.audioURL,
+  linePos:+$('linePos').value,
 });
 
 // ═══ THREE.JS ═══
@@ -602,6 +605,7 @@ function U(){
   pts.visible=c.dust;
   pG.setDrawRange(0,c.dustCount);
   $('eLT').style.display=c.lines?'':'none';$('eLB').style.display=c.lines?'':'none';
+  $('eLT').style.top=c.linePos+'vh';$('eLB').style.bottom=c.linePos+'vh';
 
   kL.color.set(c.keyC);kL.intensity=c.keyI;rL.color.set(c.rimC);rL.intensity=c.rimI;amL.intensity=c.ambI;
   // Key light distance
@@ -672,7 +676,7 @@ function U(){
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
   $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';$('vizScaleV').textContent=c.vizScale+'%';
-  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('pulseIntV').textContent=c.pulseInt.toFixed(1);
+  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('pulseIntV').textContent=c.pulseInt.toFixed(1);$('pulseSensV').textContent=c.pulseSens.toFixed(1);$('linePosV').textContent=c.linePos+'%';
 
   // Watermark
   const wm=$('wmOv');
@@ -840,7 +844,7 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseInt:'pulseInt'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseInt:'pulseInt',pulseSens:'pulseSens',linePos:'linePos'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
   if(c.modScale!=null)$('modScale').value=Math.round(c.modScale*100);
@@ -1015,7 +1019,7 @@ return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${c.title}</titl
 .bl{font-family:'Raleway',sans-serif;font-weight:200;font-size:${c.tBsz}px;color:rgba(${ar},${ag},${ab},${(o*.35).toFixed(2)});letter-spacing:.2em;text-transform:uppercase;animation:${anim_(3)};}
 .br{font-family:'Cormorant Garamond',serif;font-weight:400;font-style:italic;font-size:${c.tBsz}px;color:rgba(${ar},${ag},${ab},${(o*.53).toFixed(2)});letter-spacing:.1em;white-space:nowrap;animation:${anim_(4)},fb 5s ease-in-out ${(c.animDur+2).toFixed(0)}s infinite;}
 @keyframes fb{0%,100%{opacity:.5;}50%{opacity:.15;}}
-${c.lines?`.ln{position:fixed;left:4vw;right:4vw;height:1px;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},.1),transparent);z-index:9;pointer-events:none;}.lt{top:11vh;}.lb{bottom:11vh;}`:''}
+${c.lines?`.ln{position:fixed;left:4vw;right:4vw;height:1px;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},.1),transparent);z-index:9;pointer-events:none;}.lt{top:${c.linePos}vh;}.lb{bottom:${c.linePos}vh;}`:''}
 ${c.cine?`.cn{position:fixed;left:0;right:0;height:${c.cineH}vh;background:${c.bg};z-index:8;pointer-events:none;}.ct{top:0;}.cb{bottom:0;}`:''}
 ${c.vig?`.vg{position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(5,5,8,.75) 100%);}`:''}
 ${c.grain?`.gr{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:128px;animation:gn .4s steps(5) infinite;}@keyframes gn{0%{transform:translate(0,0);}20%{transform:translate(-2px,1px);}40%{transform:translate(1px,-2px);}60%{transform:translate(-1px,2px);}80%{transform:translate(2px,-1px);}100%{transform:translate(0,0);}}`:''}
@@ -1091,6 +1095,15 @@ lR.rotation.y=${c.lOrb}*Math.PI/180;scene.add(lR);
 var l2a=${c.l2Orb}*Math.PI/180;
 var l2=new THREE.SpotLight(parseInt('${c.l2C}'.slice(1),16),${c.l2I},25,Math.PI/5,.6,1.2);l2.position.set(Math.sin(l2a)*6,6,Math.cos(l2a)*6);l2.target.position.set(0,2.2,0);scene.add(l2);scene.add(l2.target);
 scene.add(new THREE.AmbientLight(0x151218,${c.ambI}));
+${c.lightPulse!=='none'?`
+// Halo ring — 6 PointLights evenly spaced around the model
+var haloLights=[];
+for(var hi=0;hi<6;hi++){
+  var ha=hi*Math.PI*2/6;
+  var hl=new THREE.PointLight(parseInt('${c.keyC}'.slice(1),16),0,15);
+  hl.position.set(Math.sin(ha)*4,mC.y||2.2,Math.cos(ha)*4);
+  scene.add(hl);haloLights.push(hl);
+}`:''}
 ${hdriCode}
 ${c.dust?`var PC=${c.dustCount},pG=new THREE.BufferGeometry(),pA=new Float32Array(PC*3),pS=new Float32Array(PC),pD=new Float32Array(PC);for(var i=0;i<PC;i++){pA[i*3]=(Math.random()-.5)*14;pA[i*3+1]=Math.random()*8;pA[i*3+2]=(Math.random()-.5)*14;pS[i]=.003+Math.random()*.006;pD[i]=Math.random()*Math.PI*2;}pG.setAttribute('position',new THREE.BufferAttribute(pA,3));scene.add(new THREE.Points(pG,new THREE.PointsMaterial({color:0xddc8aa,size:.022,transparent:true,opacity:.25,sizeAttenuation:true})));`:''}
 function CR(p0,p1,p2,p3,t){var t2=t*t,t3=t2*t;return new THREE.Vector3(.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3),.5*((2*p1.z)+(-p0.z+p2.z)*t+(2*p0.z-5*p1.z+4*p2.z-p3.z)*t2+(-p0.z+3*p1.z-3*p2.z+p3.z)*t3));}
@@ -1124,44 +1137,43 @@ document.addEventListener('keydown',function(e){
   setTimeout(function(){si.classList.remove('sh');},2000);
   try{window.opener.loadScn(k-1);}catch(ex){}
 });
-// Audio playback
+// Audio playback — init on first user click to fix autoplay policy
 ${S.audioURL?`
-var audio=new Audio('${S.audioURL}');audio.loop=${c.audioLoop};audio.volume=${c.audioVol/100};
-var actx,analyser,aDataArr,aBufLen;
-document.addEventListener('click',function(){
-  audio.play();
-  if(!actx){
-    actx=new(window.AudioContext||window.webkitAudioContext)();
-    var src=actx.createMediaElementSource(audio);
-    analyser=actx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.8;
-    src.connect(analyser);analyser.connect(actx.destination);
-    aBufLen=analyser.frequencyBinCount;aDataArr=new Uint8Array(aBufLen);
-  }
-},{once:true});
+var audio=new Audio();audio.src='${S.audioURL}';audio.loop=${c.audioLoop};audio.volume=${c.audioVol/100};audio.preload='auto';
+var actx=null,analyser=null,aDataArr=null,aBufLen=0,audioReady=false;
+function initAudio(){
+  if(audioReady)return;audioReady=true;
+  actx=new(window.AudioContext||window.webkitAudioContext)();
+  var src=actx.createMediaElementSource(audio);
+  analyser=actx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.82;
+  src.connect(analyser);analyser.connect(actx.destination);
+  aBufLen=analyser.frequencyBinCount;aDataArr=new Uint8Array(aBufLen);
+  audio.play().catch(function(){});
+}
+document.addEventListener('click',initAudio,{once:true});
+// Also try auto-start
+setTimeout(function(){audio.play().catch(function(){});},500);
+
 ${c.audioViz?`
 // Log-scale centered waveform visualizer
 var avzC=document.getElementById('avz'),avzCtx=avzC.getContext('2d');
 var vR=parseInt('${c.vizColor}'.slice(1,3),16),vG=parseInt('${c.vizColor}'.slice(3,5),16),vB=parseInt('${c.vizColor}'.slice(5,7),16);
 function drawViz(){
   requestAnimationFrame(drawViz);
-  if(!analyser)return;
+  if(!analyser||!aDataArr)return;
   analyser.getByteFrequencyData(aDataArr);
   var w=${c.vizScale*4},h=${c.vizScale};
   avzC.width=w;avzC.height=h;
   avzCtx.clearRect(0,0,w,h);
-  var midY=h/2;
-  // Log-scale mapping: spread low freqs, compress highs
-  var numBars=64;
+  var midY=h/2,numBars=64;
   var barW=Math.max(2,(w/numBars)-1),gap=1;
   var startX=(w-(numBars*(barW+gap)))/2;
   for(var i=0;i<numBars;i++){
-    // Map bar index to frequency bin using log scale
     var logMin=Math.log(1),logMax=Math.log(aBufLen);
     var binIdx=Math.round(Math.exp(logMin+(logMax-logMin)*i/numBars));
     if(binIdx>=aBufLen)binIdx=aBufLen-1;
-    // Average a few bins around the target for smoothness
     var sum=0,cnt=0;
-    for(var j=Math.max(0,binIdx-1);j<=Math.min(aBufLen-1,binIdx+1);j++){sum+=aDataArr[j];cnt++;}
+    for(var j=Math.max(0,binIdx-2);j<=Math.min(aBufLen-1,binIdx+2);j++){sum+=aDataArr[j];cnt++;}
     var v=(sum/cnt)/255;
     var barH=Math.max(2,v*midY*0.92);
     var x=startX+i*(barW+gap);
@@ -1172,28 +1184,41 @@ function drawViz(){
     avzCtx.fill();
   }
 }drawViz();`:''}
+
 ${c.lightPulse!=='none'?`
-// Music-reactive light pulsation
-var pulseHue=0;
+// Beat-detection based light pulsation on halo ring
+var prevBass=0,beatDecay=0,pulseHue=0;
+var THRESH=${c.pulseSens};
 function pulseLights(){
   requestAnimationFrame(pulseLights);
-  if(!analyser)return;
+  if(!analyser||!aDataArr)return;
   analyser.getByteFrequencyData(aDataArr);
-  // Bass energy (bins 0-8)
-  var bass=0;for(var i=0;i<8;i++)bass+=aDataArr[i];bass/=(8*255);
-  var pI=${c.pulseInt}*bass;
+  // Sub-bass energy (bins 1-6 ~ 40-250Hz)
+  var bass=0;for(var i=1;i<7;i++)bass+=aDataArr[i];bass/=(6*255);
+  // Beat detection: spike above rolling average
+  var delta=bass-prevBass;
+  prevBass=prevBass*0.92+bass*0.08;// slow rolling avg
+  var isBeat=delta>THRESH*0.05&&bass>0.15;
+  if(isBeat)beatDecay=1.0;
+  beatDecay*=0.92;// smooth decay
+  var pI=${c.pulseInt}*beatDecay;
   ${c.lightPulse==='multi'?`
-  pulseHue+=bass*2;if(pulseHue>360)pulseHue-=360;
-  var hr=pulseHue*Math.PI/180;
-  var pR=Math.round(128+127*Math.sin(hr));
-  var pG2=Math.round(128+127*Math.sin(hr+2.094));
-  var pB=Math.round(128+127*Math.sin(hr+4.189));
-  kL.color.setRGB(pR/255,pG2/255,pB/255);
+  pulseHue+=beatDecay*8;if(pulseHue>360)pulseHue-=360;
+  for(var hi=0;hi<haloLights.length;hi++){
+    var hOff=hi*60;
+    var hr=(pulseHue+hOff)*Math.PI/180;
+    haloLights[hi].color.setRGB(
+      (0.5+0.5*Math.sin(hr)),
+      (0.5+0.5*Math.sin(hr+2.094)),
+      (0.5+0.5*Math.sin(hr+4.189))
+    );
+    haloLights[hi].intensity=pI;
+  }
   `:`
-  kL.intensity=${c.keyI}+pI;
+  for(var hi=0;hi<haloLights.length;hi++){
+    haloLights[hi].intensity=pI;
+  }
   `}
-  rL.intensity=${c.rimI}+pI*0.6;
-  l2.intensity=${c.l2I}+pI*0.4;
 }pulseLights();`:''}
 `:''}
 <\/script></body></html>`;
