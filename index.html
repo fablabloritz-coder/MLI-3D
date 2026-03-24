@@ -111,15 +111,24 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <button class="load-btn" style="width:100%;margin-top:6px;color:var(--d)" onclick="globalP('musee')">⟲ Réinitialiser (valeurs par défaut)</button>
 </div></div>
 
-<!-- 1. MODÈLE -->
+<!-- 1. MODÈLES -->
 <div class="cat" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">📦</span><span class="cat-lbl">Modèle & Matériau</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">📦</span><span class="cat-lbl">Modèles & Matériau</span><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
-<div id="mDrop" class="drop"><div class="lb">Glissez un <strong>.glb / .stl</strong> ici</div><input type="file" accept=".glb,.gltf,.stl" style="display:none" id="mIn"></div>
-<div class="f" style="margin-top:6px"><label>Échelle</label><div class="sr"><input type="range" id="modScale" min="20" max="300" value="100"><span class="v" id="modScaleV">100%</span></div></div>
-<div class="f"><label>Orientation (°)</label><div class="sr"><input type="range" id="modRot" min="0" max="360" value="0"><span class="v" id="modRotV">0°</span></div></div>
-<div class="f"><label>Auto-rotation</label><div class="sr"><input type="range" id="modSpin" min="0" max="30" value="0"><span class="v" id="modSpinV">0</span></div></div>
-<div class="st">Matériau</div>
+<div class="pr" style="margin-bottom:8px" id="slotPr">
+<button class="pb ac" onclick="selSlot(0,this)">Modèle 1</button>
+<button class="pb" onclick="selSlot(1,this)">Modèle 2</button>
+<button class="pb" onclick="selSlot(2,this)">Modèle 3</button>
+</div>
+<div id="slotPanel">
+<div id="sDrop0" class="drop"><div class="lb">Glissez un <strong>.glb / .stl</strong> ici</div><input type="file" accept=".glb,.gltf,.stl" style="display:none" id="sIn0"></div>
+<div class="f" style="margin-top:6px"><label>Échelle</label><div class="sr"><input type="range" id="sScale" min="20" max="300" value="100"><span class="v" id="sScaleV">100%</span></div></div>
+<div class="f"><label>Orientation (°)</label><div class="sr"><input type="range" id="sRot" min="0" max="360" value="0"><span class="v" id="sRotV">0°</span></div></div>
+<div class="f"><label>Position X</label><div class="sr"><input type="range" id="sPosX" min="-50" max="50" value="0"><span class="v" id="sPosXV">0</span></div></div>
+<div class="f"><label>Position Z</label><div class="sr"><input type="range" id="sPosZ" min="-50" max="50" value="0"><span class="v" id="sPosZV">0</span></div></div>
+<div class="f"><label>Auto-rotation</label><div class="sr"><input type="range" id="sSpin" min="0" max="30" value="0"><span class="v" id="sSpinV">0</span></div></div>
+</div>
+<div class="st">Matériau (modèle 1)</div>
 <div class="pr" id="matPr">
 <button class="pb ac" data-mat="original" onclick="setMat(this)">Original</button>
 <button class="pb" data-mat="bronze" onclick="setMat(this)">Bronze</button>
@@ -367,20 +376,40 @@ const h2r=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.sli
 const HDRI_BASE='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/';
 
 // ═══ STATE ═══
-const S={modelBuf:null,modelName:'',modelType:'glb',logoURL:null,bgURL:null,bgType:null,curMat:'original',origMats:[],customHdriBuf:null,scenes:[],baseScale:1,audioURL:null,audioName:'',particleURL:null};
-window.getState=()=>S;
+const SLOTS=[
+  {buf:null,name:'',type:'glb',origMats:[],mixer:null,baseScale:1,group:null},
+  {buf:null,name:'',type:'glb',origMats:[],mixer:null,baseScale:1,group:null},
+  {buf:null,name:'',type:'glb',origMats:[],mixer:null,baseScale:1,group:null}
+];
+let activeSlot=0;
+const S={get modelBuf(){return SLOTS[0].buf;},set modelBuf(v){SLOTS[0].buf=v;},
+  get modelName(){return SLOTS[0].name;},set modelName(v){SLOTS[0].name=v;},
+  get modelType(){return SLOTS[0].type;},set modelType(v){SLOTS[0].type=v;},
+  get origMats(){return SLOTS[0].origMats;},set origMats(v){SLOTS[0].origMats=v;},
+  get baseScale(){return SLOTS[0].baseScale;},set baseScale(v){SLOTS[0].baseScale=v;},
+  logoURL:null,bgURL:null,bgType:null,curMat:'original',customHdriBuf:null,scenes:[],audioURL:null,audioName:'',particleURL:null,
+  _bgVid:null,_bgVidTex:null,_bgImgTex:null,_bgImgSrc:null,_bgAnimCanvas:null,_bgAnimTex:null,_bgAnimType:null,_bgAnimT:0
+};
+
+// Per-slot config from UI
+function getSlotCfg(i){
+  if(i===activeSlot)return{scale:+$('sScale').value/100,rot:+$('sRot').value,posX:+$('sPosX').value/10,posZ:+$('sPosZ').value/10,spin:+$('sSpin').value};
+  return SLOTS[i]._cfg||{scale:1,rot:0,posX:0,posZ:0,spin:0};
+}
+
+window.getState=()=>({...S,slots:SLOTS});
 window.getConfig=()=>({
   title:$('tT').value,sub:$('tS').value,bl:$('tBL').value,br:$('tBR').value,live:$('tLV').value,
   fontT:$('fontT').value,tTsz:+$('tTsz').value,tSsz:+$('tSsz').value,tBsz:+$('tBsz').value,
   accent:$('cA').value,bg:$('cB').value,liveC:$('cL').value,floorC:$('cF').value,tOp:+$('tOp').value/100,
   showFloor:$('togFloor').classList.contains('on'),reflectFloor:$('togReflect').classList.contains('on'),
-  modScale:+$('modScale').value/100,
+  slots:[getSlotCfg(0),getSlotCfg(1),getSlotCfg(2)],
   gExp:+$('gExp').value/10,
   keyC:$('cK').value,keyI:+$('kI').value/10,kDist:+$('kDist').value,
   rimC:$('cR').value,rimI:+$('rI').value/10,
   l2C:$('cL2').value,l2I:+$('l2I').value/10,l2Orb:+$('l2Orb').value,
   ambI:+$('aI').value/10,
-  lOrb:+$('lOrb').value,modRot:+$('modRot').value,modSpin:+$('modSpin').value,
+  lOrb:+$('lOrb').value,
   camSpd:+$('cSpd').value,camDist:+$('cDst').value,cLookY:+$('cLookY').value/10,
   camMode:$('camMode').value,cutDur:+$('cutDur').value/10,
   mat:S.curMat,
@@ -423,8 +452,7 @@ composer.addPass(bokehPass);
 
 const pmrem=new THREE.PMREMGenerator(R);pmrem.compileEquirectangularShader();
 
-// Animation mixer for animated GLB models
-let mixer=null;
+// Animation mixers are per-slot (in SLOTS[])
 
 // Adaptive resolution
 let adaptPR=Math.min(devicePixelRatio,2),frameCount=0,frameTimes=[];
@@ -445,7 +473,10 @@ const pM=new THREE.MeshStandardMaterial({color:0x252528,roughness:.35,metalness:
 const aM=new THREE.MeshStandardMaterial({color:0x18181b,roughness:.3,metalness:.05});
 
 // ═══ SCENE ═══
-const G=new THREE.Group(); // model container
+const G=new THREE.Group(); // model container (slot 0)
+const G1=new THREE.Group(); // slot 1
+const G2=new THREE.Group(); // slot 2
+SLOTS[0].group=G;SLOTS[1].group=G1;SLOTS[2].group=G2;
 const lightRig=new THREE.Group(); // lights rotate around this
 let mC=new THREE.Vector3(0,2.2,0),mH=4.4;
 
@@ -480,7 +511,7 @@ buildDef();
 const flrMatNormal=new THREE.MeshStandardMaterial({color:0x0e0e11,roughness:.9});
 const flrMatReflect=new THREE.MeshStandardMaterial({color:0x0e0e11,roughness:.05,metalness:.95});
 const flr=new THREE.Mesh(new THREE.CircleGeometry(20,64),flrMatNormal);
-flr.rotation.x=-Math.PI/2;flr.receiveShadow=true;scene.add(flr);scene.add(G);
+flr.rotation.x=-Math.PI/2;flr.receiveShadow=true;scene.add(flr);scene.add(G);scene.add(G1);scene.add(G2);
 
 // Lights in a rig so we can orbit them
 const kL=new THREE.SpotLight(0xffeedd,2,40,Math.PI/6,.65,1.2);
@@ -521,41 +552,44 @@ let cp=0;
 const gltfLoader=new THREE.GLTFLoader();
 const stlLoader=new THREE.STLLoader();
 
-function loadModel(buf,type){
-  while(G.children.length)G.remove(G.children[0]);
-  S.origMats=[];mixer=null;
+function loadModelSlot(slotIdx,buf,type){
+  const sl=SLOTS[slotIdx],gr=sl.group;
+  while(gr.children.length)gr.remove(gr.children[0]);
+  sl.origMats=[];sl.mixer=null;
 
   if(type==='stl'){
     const geo=stlLoader.parse(buf);
     geo.computeVertexNormals();
     const mesh=new THREE.Mesh(geo,MATS.bronze.clone());
     const bx=new THREE.Box3().setFromObject(mesh),sz=bx.getSize(new THREE.Vector3());
-    S.baseScale=4/sz.y;mesh.scale.setScalar(S.baseScale);
+    sl.baseScale=4/sz.y;mesh.scale.setScalar(sl.baseScale);
     const b2=new THREE.Box3().setFromObject(mesh),c2=b2.getCenter(new THREE.Vector3());
     mesh.position.x-=c2.x;mesh.position.z-=c2.z;mesh.position.y-=b2.min.y;
     mesh.castShadow=mesh.receiveShadow=true;
-    S.origMats.push({mesh:mesh,mat:mesh.material.clone()});
-    G.add(mesh);
-    const fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;
-    applyMat(S.curMat);
+    sl.origMats.push({mesh:mesh,mat:mesh.material.clone()});
+    gr.add(mesh);
+    if(slotIdx===0){const fb=new THREE.Box3().setFromObject(gr);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;}
+    if(slotIdx===0)applyMat(S.curMat);
     return;
   }
 
   gltfLoader.parse(buf,'',g=>{
     const m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());
-    S.baseScale=4/sz.y;m.scale.setScalar(S.baseScale);
+    sl.baseScale=4/sz.y;m.scale.setScalar(sl.baseScale);
     const b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());
     m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;
-    m.traverse(c=>{if(c.isMesh){c.castShadow=c.receiveShadow=true;S.origMats.push({mesh:c,mat:c.material.clone()});}});
-    G.add(m);
-    const fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;
+    m.traverse(c=>{if(c.isMesh){c.castShadow=c.receiveShadow=true;sl.origMats.push({mesh:c,mat:c.material.clone()});}});
+    gr.add(m);
+    if(slotIdx===0){const fb=new THREE.Box3().setFromObject(gr);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;}
     if(g.animations&&g.animations.length>0){
-      mixer=new THREE.AnimationMixer(m);
-      g.animations.forEach(clip=>mixer.clipAction(clip).play());
+      sl.mixer=new THREE.AnimationMixer(m);
+      g.animations.forEach(clip=>sl.mixer.clipAction(clip).play());
     }
-    applyMat(S.curMat);
+    if(slotIdx===0)applyMat(S.curMat);
   });
 }
+// Backward compat
+function loadModel(buf,type){loadModelSlot(0,buf,type);}
 
 // ═══ MATERIAL SYSTEM ═══
 function applyMat(name){
@@ -665,11 +699,19 @@ function U(){
   // Second light
   l2.color.set(c.l2C);l2.intensity=c.l2I;
   const l2a=c.l2Orb*Math.PI/180;l2.position.set(Math.sin(l2a)*6,6,Math.cos(l2a)*6);
-  // Model scale + rotation
-  const sc=c.modScale*S.baseScale;
-  G.traverse(ch=>{if(ch.parent===G&&ch.type==='Scene'||ch.type==='Group'||ch.isMesh){/* scale handled on root */}});
-  if(G.children.length>0){const root=G.children[0];if(root.userData._baseScale===undefined)root.userData._baseScale=root.scale.x;root.scale.setScalar(root.userData._baseScale*c.modScale);}
-  G.rotation.y=c.modRot*Math.PI/180;
+  // Model transforms — all 3 slots
+  for(let si=0;si<3;si++){
+    const sl=SLOTS[si],gr=sl.group;if(!gr||!gr.children.length)continue;
+    const scfg=getSlotCfg(si);
+    if(gr.children[0]){
+      const root=gr.children[0];
+      if(root.userData._baseScale===undefined)root.userData._baseScale=root.scale.x;
+      root.scale.setScalar(root.userData._baseScale*scfg.scale);
+    }
+    gr.rotation.y=scfg.rot*Math.PI/180;
+    gr.position.x=scfg.posX;
+    gr.position.z=scfg.posZ;
+  }
   // Global exposure (override HDRI exposure if no HDRI)
   if(!c.hdri)R.toneMappingExposure=c.gExp;
 
@@ -712,8 +754,9 @@ function U(){
   }
 
   // Value displays
-  $('modScaleV').textContent=Math.round(c.modScale*100)+'%';
-  $('modRotV').textContent=c.modRot+'°';$('modSpinV').textContent=c.modSpin;
+  $('sScaleV').textContent=Math.round(getSlotCfg(activeSlot).scale*100)+'%';
+  $('sRotV').textContent=getSlotCfg(activeSlot).rot+'°';$('sSpinV').textContent=getSlotCfg(activeSlot).spin;
+  $('sPosXV').textContent=getSlotCfg(activeSlot).posX.toFixed(1);$('sPosZV').textContent=getSlotCfg(activeSlot).posZ.toFixed(1);
   $('logoSzV').textContent=c.logoSz;$('tTszV').textContent=c.tTsz;$('tSszV').textContent=c.tSsz;
   $('tBszV').textContent=c.tBsz;$('tOpV').textContent=Math.round(o*100)+'%';
   $('gExpV').textContent=c.gExp.toFixed(1);
@@ -780,6 +823,31 @@ function renderBgFrame(){
 }
 
 document.querySelectorAll('#P input,#P select').forEach(el=>{el.addEventListener('input',U);el.addEventListener('change',U);});
+
+// ═══ MULTI-MODEL SLOT SYSTEM ═══
+function selSlot(idx,btn){
+  // Save current slot controls
+  SLOTS[activeSlot]._cfg=getSlotCfg(activeSlot);
+  activeSlot=idx;
+  document.querySelectorAll('#slotPr .pb').forEach(b=>b.classList.remove('ac'));
+  if(btn)btn.classList.add('ac');
+  // Update drop zone for active slot
+  const sl=SLOTS[idx];
+  const dropEl=$('sDrop0');
+  if(sl.buf){
+    dropEl.classList.add('ld');dropEl.querySelector('.lb').innerHTML='✓ <strong>'+sl.name+'</strong>';
+  }else{
+    dropEl.classList.remove('ld');dropEl.querySelector('.lb').innerHTML='Glissez un <strong>.glb / .stl</strong> ici';
+  }
+  // Restore controls
+  const cfg=sl._cfg||{scale:100,rot:0,posX:0,posZ:0,spin:0};
+  $('sScale').value=Math.round(cfg.scale*100)||100;
+  $('sRot').value=cfg.rot||0;
+  $('sPosX').value=Math.round((cfg.posX||0)*10);
+  $('sPosZ').value=Math.round((cfg.posZ||0)*10);
+  $('sSpin').value=cfg.spin||0;
+  U();
+}
 
 function camP(btn){document.querySelectorAll('#camPr .pb').forEach(b=>b.classList.remove('ac'));btn.classList.add('ac');$('cSpd').value=btn.dataset.s;$('cDst').value=btn.dataset.d;U();}
 function lightP(btn){document.querySelectorAll('#lightPr .pb').forEach(b=>b.classList.remove('ac'));btn.classList.add('ac');$('cK').value=btn.dataset.kc;$('kI').value=btn.dataset.ki;$('cR').value=btn.dataset.rc;$('rI').value=btn.dataset.ri;$('aI').value=btn.dataset.ai;$('lOrb').value=btn.dataset.lo;U();}
@@ -861,14 +929,21 @@ function globalP(name){
 function sD(d,i,fn){d.addEventListener('click',()=>i.click());i.addEventListener('change',e=>{if(e.target.files[0])fn(e.target.files[0]);});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('dg');});d.addEventListener('dragleave',()=>d.classList.remove('dg'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('dg');if(e.dataTransfer.files[0])fn(e.dataTransfer.files[0]);});}
 function aRB(d,fn){if(d.querySelector('.rb'))return;const b=document.createElement('button');b.className='rb';b.textContent='✕';b.addEventListener('click',e=>{e.stopPropagation();fn();});d.appendChild(b);}
 
-sD($('mDrop'),$('mIn'),f=>{
-  S.modelName=f.name;
-  S.modelType=f.name.toLowerCase().endsWith('.stl')?'stl':'glb';
+sD($('sDrop0'),$('sIn0'),f=>{
+  const sl=SLOTS[activeSlot];
+  sl.name=f.name;
+  sl.type=f.name.toLowerCase().endsWith('.stl')?'stl':'glb';
   const r=new FileReader();
-  r.onload=e=>{S.modelBuf=e.target.result;loadModel(e.target.result,S.modelType);};
+  r.onload=e=>{sl.buf=e.target.result;loadModelSlot(activeSlot,e.target.result,sl.type);};
   r.readAsArrayBuffer(f);
-  $('mDrop').classList.add('ld');$('mDrop').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
-  aRB($('mDrop'),()=>{S.modelBuf=null;S.modelName='';S.modelType='glb';S.origMats=[];S.baseScale=1;$('mDrop').classList.remove('ld');$('mDrop').querySelector('.lb').innerHTML='Glissez un <strong>.glb / .stl</strong> ici';const b=$('mDrop').querySelector('.rb');if(b)b.remove();buildDef();});
+  $('sDrop0').classList.add('ld');$('sDrop0').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
+  aRB($('sDrop0'),()=>{
+    const g=sl.group;while(g.children.length)g.remove(g.children[0]);
+    sl.buf=null;sl.name='';sl.type='glb';sl.origMats=[];sl.baseScale=1;sl.mixer=null;
+    $('sDrop0').classList.remove('ld');$('sDrop0').querySelector('.lb').innerHTML='Glissez un <strong>.glb / .stl</strong> ici';
+    const b=$('sDrop0').querySelector('.rb');if(b)b.remove();
+    if(activeSlot===0)buildDef();
+  });
 });
 
 sD($('lDrop'),$('lIn'),f=>{const r=new FileReader();r.onload=e=>{S.logoURL=e.target.result;
@@ -908,15 +983,7 @@ sD($('aDrop'),$('aIn'),f=>{const r=new FileReader();r.onload=e=>{
 // ═══ SAVE / LOAD ═══
 function getCV(){const c=window.getConfig();delete c.logoURL;delete c.audioURL;return c;}
 function saveC(){const n=$('savN').value.trim();if(!n)return;const s=JSON.parse(localStorage.getItem('3di_saves')||'{}');s[n]=getCV();localStorage.setItem('3di_saves',JSON.stringify(s));$('savN').value='';renderS();}
-function loadC(n){const s=JSON.parse(localStorage.getItem('3di_saves')||'{}'),c=s[n];if(!c)return;
-const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz'};
-Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
-if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
-if(c.keyI!=null)$('kI').value=Math.round(c.keyI*10);if(c.rimI!=null)$('rI').value=Math.round(c.rimI*10);if(c.ambI!=null)$('aI').value=Math.round(c.ambI*10);
-const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
-['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
-if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
-U();}
+function loadC(n){const s=JSON.parse(localStorage.getItem('3di_saves')||'{}'),c=s[n];if(!c)return;loadC_fromObj(c);}
 function delC(n){const s=JSON.parse(localStorage.getItem('3di_saves')||'{}');delete s[n];localStorage.setItem('3di_saves',JSON.stringify(s));renderS();}
 function renderS(){const s=JSON.parse(localStorage.getItem('3di_saves')||'{}'),el=$('savL');el.innerHTML='';
 Object.keys(s).forEach(n=>{const d=document.createElement('div');d.className='saved-item';d.innerHTML=`<span onclick="loadC('${n.replace(/'/g,"\\'")}')">${n}</span><button onclick="delC('${n.replace(/'/g,"\\'")}')">✕</button>`;el.appendChild(d);});}
@@ -945,10 +1012,15 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',modRot:'modRot',modSpin:'modSpin',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseInt:'pulseInt',pulseSens:'pulseSens',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',dustSize:'dustSize'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseInt:'pulseInt',pulseSens:'pulseSens',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',dustSize:'dustSize'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
-  if(c.modScale!=null)$('modScale').value=Math.round(c.modScale*100);
+  if(c.slots&&c.slots[0]){
+    $('sScale').value=Math.round((c.slots[0].scale||1)*100);$('sRot').value=c.slots[0].rot||0;
+    $('sPosX').value=Math.round((c.slots[0].posX||0)*10);$('sPosZ').value=Math.round((c.slots[0].posZ||0)*10);
+    $('sSpin').value=c.slots[0].spin||0;
+    for(let si=0;si<3;si++)if(c.slots[si])SLOTS[si]._cfg=c.slots[si];
+  }
   if(c.gExp!=null)$('gExp').value=Math.round(c.gExp*10);
   if(c.keyI!=null)$('kI').value=Math.round(c.keyI*10);if(c.kDist!=null)$('kDist').value=c.kDist;
   if(c.rimI!=null)$('rI').value=Math.round(c.rimI*10);if(c.ambI!=null)$('aI').value=Math.round(c.ambI*10);
@@ -1056,11 +1128,14 @@ function anim(){
   cam.position.copy(pos);cam.position.x+=Math.sin(el*.35)*.012;cam.position.y+=Math.cos(el*.28)*.008;
   cam.lookAt(lk);
 
-  if(mixer)mixer.update(dt);
+  // Update all slot mixers + auto-spin
+  for(let si=0;si<3;si++){
+    const sl=SLOTS[si];
+    if(sl.mixer)sl.mixer.update(dt);
+    const scfg=getSlotCfg(si);
+    if(scfg.spin>0&&sl.group)sl.group.rotation.y+=(scfg.spin/100)*dt;
+  }
   renderBgFrame();
-
-  const spin=+$('modSpin').value;
-  if(spin>0)G.rotation.y+=(spin/100)*dt;
 
   if(bokehPass.enabled)bokehPass.uniforms['focus'].value=cam.position.distanceTo(mC);
 
@@ -1178,7 +1253,7 @@ ${c.dof?`var bkp=new THREE.BokehPass(scene,camera,{focus:5,aperture:${c.dofAp*0.
 var bM=MATS.bronze,dM=new THREE.MeshStandardMaterial({color:0x5C4A3A,roughness:.65,metalness:.55});
 var pM=new THREE.MeshStandardMaterial({color:0x252528,roughness:.35,metalness:.08}),aM=new THREE.MeshStandardMaterial({color:0x18181b,roughness:.3,metalness:.05});
 var G=new THREE.Group(),mC=new THREE.Vector3(0,2.2,0),mH=4.4;
-G.rotation.y=${c.modRot}*Math.PI/180;
+G.rotation.y=${c.slots[0].rot}*Math.PI/180;
 function buildDef(){function mk(g,m,y){var o=new THREE.Mesh(g,m);o.position.y=y;o.castShadow=o.receiveShadow=true;return o;}
 G.add(mk(new THREE.BoxGeometry(2.4,.12,2.4),aM,.06));G.add(mk(new THREE.BoxGeometry(2,.1,2),aM,.17));
 G.add(mk(new THREE.BoxGeometry(1.4,2.2,1.4),pM,1.37));G.add(mk(new THREE.BoxGeometry(1.6,.08,1.6),pM,2.51));G.add(mk(new THREE.BoxGeometry(1.5,.06,1.5),pM,2.58));
@@ -1195,14 +1270,44 @@ if(mb&&mType==='stl'){
   var geo=new THREE.STLLoader().parse(mb);geo.computeVertexNormals();
   var mesh=new THREE.Mesh(geo,MATS.bronze.clone());
   var bx=new THREE.Box3().setFromObject(mesh),sz=bx.getSize(new THREE.Vector3());
-  var bsc=4/sz.y*${c.modScale};mesh.scale.setScalar(bsc);
+  var bsc=4/sz.y*${c.slots[0].scale};mesh.scale.setScalar(bsc);
   var b2=new THREE.Box3().setFromObject(mesh),c2=b2.getCenter(new THREE.Vector3());
   mesh.position.x-=c2.x;mesh.position.z-=c2.z;mesh.position.y-=b2.min.y;
   mesh.castShadow=mesh.receiveShadow=true;G.add(mesh);
   var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;
   ${matCode}
-} else if(mb){new THREE.GLTFLoader().parse(mb,'',function(g){var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());var bsc=4/sz.y;m.scale.setScalar(bsc*${c.modScale});var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;}});G.add(m);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;if(g.animations&&g.animations.length>0){mixer=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}},function(){buildDef();});} else{buildDef();}
+} else if(mb){new THREE.GLTFLoader().parse(mb,'',function(g){var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());var bsc=4/sz.y;m.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;}});G.add(m);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;if(g.animations&&g.animations.length>0){mixer=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}},function(){buildDef();});} else{buildDef();}
 var fl=new THREE.Mesh(new THREE.CircleGeometry(20,64),new THREE.MeshStandardMaterial({color:parseInt('${c.floorC}'.slice(1),16),roughness:${c.reflectFloor?'.05':'.9'},metalness:${c.reflectFloor?'.95':'0'}}));fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;fl.visible=${c.showFloor&&!(c.hdriBg&&c.hdri)};scene.add(fl);scene.add(G);
+// Load extra model slots (1 and 2)
+${[1,2].map(si=>{
+  const sc=c.slots[si];if(!sc)return'';
+  return `
+(function(){
+  var sl=null;try{sl=window.opener&&window.opener.getState&&window.opener.getState().slots[${si}];}catch(e){}
+  if(!sl||!sl.buf)return;
+  var grp=new THREE.Group();grp.rotation.y=${sc.rot}*Math.PI/180;grp.position.x=${sc.posX};grp.position.z=${sc.posZ};
+  if(sl.type==='stl'){
+    var geo=new THREE.STLLoader().parse(sl.buf);geo.computeVertexNormals();
+    var mesh=new THREE.Mesh(geo,MATS.bronze.clone());
+    var bx=new THREE.Box3().setFromObject(mesh),sz=bx.getSize(new THREE.Vector3());
+    mesh.scale.setScalar(4/sz.y*${sc.scale});
+    var b2=new THREE.Box3().setFromObject(mesh),c2=b2.getCenter(new THREE.Vector3());
+    mesh.position.x-=c2.x;mesh.position.z-=c2.z;mesh.position.y-=b2.min.y;
+    mesh.castShadow=mesh.receiveShadow=true;grp.add(mesh);
+  }else{
+    new THREE.GLTFLoader().parse(sl.buf,'',function(g){
+      var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());
+      m.scale.setScalar(4/sz.y*${sc.scale});
+      var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());
+      m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;
+      m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;}});grp.add(m);
+      if(g.animations&&g.animations.length>0){var mx=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mx.clipAction(cl).play();});}
+    });
+  }
+  scene.add(grp);
+  ${sc.spin>0?`(function spin(){requestAnimationFrame(spin);grp.rotation.y+=${sc.spin}/100*0.016;})();`:''}
+})();`;
+}).join('')}
 var lR=new THREE.Group();
 var kD=${c.kDist};
 var kL=new THREE.SpotLight(parseInt('${c.keyC}'.slice(1),16),${c.keyI},kD*4,Math.PI/6,.65,1.2);kL.position.set(3*(kD/10),9*(kD/10),4*(kD/10));kL.target.position.set(0,2.2,0);kL.castShadow=true;kL.shadow.mapSize.set(2048,2048);kL.shadow.bias=-.001;lR.add(kL);lR.add(kL.target);
@@ -1238,7 +1343,7 @@ cp+=dt*${c.camSpd}/1000;if(cp>1)cp-=1;
 var wp=getWP(),pos=ES(wp.p,cp),lk=ES(wp.l,cp);
 pos.y=Math.max(.3,pos.y);
 camera.position.copy(pos);camera.position.x+=Math.sin(el*.35)*.012;camera.position.y+=Math.cos(el*.28)*.008;camera.lookAt(lk);
-${c.modSpin>0?`G.rotation.y+=${c.modSpin}/100*dt;`:''}
+${c.slots[0].spin>0?`G.rotation.y+=${c.slots[0].spin}/100*dt;`:''}
 ${c.dof?`bkp.uniforms['focus'].value=camera.position.distanceTo(mC);`:''}
 ${c.dust?`var pa=pG.attributes.position.array;for(var i=0;i<PC;i++){pa[i*3+1]+=pS[i]*dt*6;pa[i*3]+=Math.sin(el*.4+pD[i])*.0004;pa[i*3+2]+=Math.cos(el*.3+pD[i])*.0003;if(pa[i*3+1]>8){pa[i*3+1]=-.5;pa[i*3]=(Math.random()-.5)*14;pa[i*3+2]=(Math.random()-.5)*14;}}pG.attributes.position.needsUpdate=true;`:''}
 kL.intensity=${c.keyI}+Math.sin(el*.6)*.1+Math.sin(el*1.1)*.06;rL.intensity=${c.rimI}+Math.sin(el*.4+1)*.08;
