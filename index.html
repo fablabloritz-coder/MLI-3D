@@ -1463,7 +1463,7 @@ function drawBg(){requestAnimationFrame(drawBg);
   ${c.bgAnim==='stars'?`bgCtx.fillStyle='rgba(0,0,0,0.08)';bgCtx.fillRect(0,0,512,512);strs.forEach(function(s){s.b+=.02*(Math.random()-.5);s.b=Math.max(.1,Math.min(1,s.b));bgCtx.fillStyle='rgba(220,210,190,'+s.b*0.4+')';bgCtx.beginPath();bgCtx.arc(s.x*512,s.y*512,s.s,0,Math.PI*2);bgCtx.fill();});shT++;if(shT>180&&Math.random()>.97){shts.push({x:Math.random()*512,y:Math.random()*150,dx:2+Math.random()*3,dy:.7+Math.random()*1.5,l:20,life:1});shT=0;}shts.forEach(function(s){s.x+=s.dx;s.y+=s.dy;s.life-=.015;if(s.life>0){bgCtx.strokeStyle='rgba(220,200,170,'+s.life*.5+')';bgCtx.lineWidth=1;bgCtx.beginPath();bgCtx.moveTo(s.x,s.y);bgCtx.lineTo(s.x-s.dx*s.l*.3,s.y-s.dy*s.l*.3);bgCtx.stroke();}});for(var i=shts.length-1;i>=0;i--)if(shts[i].life<=0)shts.splice(i,1);`:''}
   bgTex.needsUpdate=true;
 }drawBg();`:''}
-`:''}// Audio playback — init on first user click to fix autoplay policy
+// Audio playback — init on first user click to fix autoplay policy
 ${S.audioURL?`
 var audio=new Audio();audio.src='${S.audioURL}';audio.loop=${c.audioLoop};audio.volume=${c.audioVol/100};audio.preload='auto';
 var actx=null,analyser=null,aDataArr=null,aBufLen=0,audioReady=false;
