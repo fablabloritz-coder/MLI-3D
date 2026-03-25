@@ -484,7 +484,7 @@ const pmrem=new THREE.PMREMGenerator(R);pmrem.compileEquirectangularShader();
 // Animation mixers are per-slot (in SLOTS[])
 
 // Adaptive resolution
-let adaptPR=Math.min(devicePixelRatio,2),frameCount=0,frameTimes=[];
+let adaptPR=1,frameCount=0,frameTimes=[];
 
 function resize(){const w=pvE.clientWidth,h=pvE.clientHeight;R.setSize(w,h);R.setPixelRatio(adaptPR);composer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
 resize();window.addEventListener('resize',resize);
@@ -566,7 +566,7 @@ flr.rotation.x=-Math.PI/2;flr.receiveShadow=true;scene.add(flr);scene.add(G);sce
 
 // Lights in a rig so we can orbit them
 const kL=new THREE.SpotLight(0xffeedd,2,40,Math.PI/6,.65,1.2);
-kL.position.set(3,9,4);kL.target.position.set(0,2.2,0);kL.castShadow=true;kL.shadow.mapSize.set(2048,2048);kL.shadow.bias=-.001;
+kL.position.set(3,9,4);kL.target.position.set(0,2.2,0);kL.castShadow=true;kL.shadow.mapSize.set(1024,1024);kL.shadow.bias=-.001;
 lightRig.add(kL);lightRig.add(kL.target);
 const fL=new THREE.SpotLight(0x99aabb,.45,25,Math.PI/5,.7,1.5);fL.position.set(-5,5,-3);fL.target.position.set(0,2.2,0);lightRig.add(fL);lightRig.add(fL.target);
 const rL=new THREE.SpotLight(0xddccaa,.7,25,Math.PI/6,.5,1.5);rL.position.set(-1,5,-6);rL.target.position.set(0,2.5,0);lightRig.add(rL);lightRig.add(rL.target);
@@ -764,25 +764,30 @@ function U(){
       }
       const sc=c.bgScale/100,gH=c.bgGapH,gV=c.bgGapV,blur=c.bgBlur||0;
       const hasGap=mode==='tile'&&(gH>0||gV>0);
-      // Tiny canvas for blur/gap — GPU does the upscale/repeat
-      const blurDiv=blur>0?Math.max(1,blur/2):1;
-      const tinyW=Math.max(8,Math.round(64/blurDiv)),tinyH=Math.max(8,Math.round(64/blurDiv));
       if(hasGap||blur>0){
-        // One tiny drawImage per frame → GPU upscale = blur + tile
-        const gw=Math.round(gH/(sc*10)*tinyW),gh=Math.round(gV/(sc*10)*tinyH);
-        const tw=tinyW,th=tinyH,cw=tw+(hasGap?gw:0),ch=th+(hasGap?gh:0);
+        // Tiny canvas: blur via downscale, gap via padding
+        const blurDiv=blur>0?Math.max(1,blur/2):1;
+        const baseW=Math.max(8,Math.round(64/blurDiv));
+        // Gap proportional to tile size
+        const gw=hasGap?Math.max(1,Math.round(gH*baseW/100)):0;
+        const gh=hasGap?Math.max(1,Math.round(gV*baseW/100)):0;
+        const cw=baseW+gw,ch=baseW+gh;
         if(!S._bgVidCanvas||S._bgVidCanvas.width!==cw||S._bgVidCanvas.height!==ch){
           S._bgVidCanvas=document.createElement('canvas');S._bgVidCanvas.width=Math.max(1,cw);S._bgVidCanvas.height=Math.max(1,ch);
         }
         if(!S._bgVidTex2||S._bgVidTex2._isVT){S._bgVidTex2=new THREE.CanvasTexture(S._bgVidCanvas);S._bgVidTex2._isVT=false;}
         S._bgVidTex2.magFilter=THREE.LinearFilter;
-        S._bgVidNeedsCanvasDraw=true;S._bgVidTinyW=tw;S._bgVidTinyH=th;
+        S._bgVidNeedsCanvasDraw=true;S._bgVidTinyW=baseW;S._bgVidTinyH=baseW;
         if(mode==='tile'){
           S._bgVidTex2.wrapS=THREE.RepeatWrapping;S._bgVidTex2.wrapT=THREE.RepeatWrapping;
-          S._bgVidTex2.repeat.set(512/Math.max(1,cw),512/Math.max(1,ch));
+          // Scale: smaller sc = more repetitions
+          const rpt=1/Math.max(0.01,sc);
+          S._bgVidTex2.repeat.set(rpt*cw/baseW,rpt*ch/baseW);
+          S._bgVidTex2.offset.set(0,0);
         }else{
           S._bgVidTex2.wrapS=THREE.ClampToEdgeWrapping;S._bgVidTex2.wrapT=THREE.ClampToEdgeWrapping;
-          S._bgVidTex2.repeat.set(1,1);S._bgVidTex2.offset.set(0,0);
+          const rs=1/Math.max(0.01,sc);
+          S._bgVidTex2.repeat.set(rs,rs);S._bgVidTex2.offset.set((1-rs)/2,(1-rs)/2);
         }
       }else{
         // Pure GPU: VideoTexture + repeat
@@ -1356,9 +1361,13 @@ function nextShot(){
 
 let cutTimer=0,cutPhase='show',fadeOvEl=null;
 const clock=new THREE.Clock();
-function anim(){
+let _prevFrameT=0;
+function anim(t){
   requestAnimationFrame(anim);
-  const dt=clock.getDelta(),el=clock.getElapsedTime();
+  // Cap preview to 30fps to save GPU
+  if(t-_prevFrameT<33)return;
+  _prevFrameT=t;
+  const dt=Math.min(0.05,clock.getDelta()),el=clock.getElapsedTime();
   const spd=+$('cSpd').value/1000,dist=+$('cDst').value;
   const lookYOff=+$('cLookY').value/10;
   const mode=$('camMode').value;
@@ -1418,9 +1427,9 @@ function anim(){
   rL.intensity=ri+Math.sin(el*.4+1)*.08;
 
   frameCount++;frameTimes.push(performance.now());
-  if(frameTimes.length>60){frameTimes.shift();const avg=60000/(frameTimes[frameTimes.length-1]-frameTimes[0]);
-    if(avg<25&&adaptPR>0.75){adaptPR=Math.max(0.5,adaptPR-0.25);R.setPixelRatio(adaptPR);}
-    else if(avg>55&&adaptPR<Math.min(devicePixelRatio,2)){adaptPR=Math.min(Math.min(devicePixelRatio,2),adaptPR+0.125);R.setPixelRatio(adaptPR);}
+  if(frameTimes.length>30){frameTimes.shift();const avg=30000/(frameTimes[frameTimes.length-1]-frameTimes[0]);
+    if(avg<20&&adaptPR>0.5){adaptPR=Math.max(0.4,adaptPR-0.25);R.setPixelRatio(adaptPR);}
+    else if(avg>28&&adaptPR<1.5){adaptPR=Math.min(1.5,adaptPR+0.125);R.setPixelRatio(adaptPR);}
   }
 
   if(bloomPass.enabled||bokehPass.enabled)composer.render();
@@ -1514,7 +1523,7 @@ ${c.dof?`<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/sha
 var MATS={bronze:new THREE.MeshStandardMaterial({color:0x8B7355,roughness:.5,metalness:.75}),marble:new THREE.MeshStandardMaterial({color:0xf0ebe3,roughness:.25,metalness:.02}),chrome:new THREE.MeshStandardMaterial({color:0xcccccc,roughness:.05,metalness:1}),gold:new THREE.MeshStandardMaterial({color:0xd4a843,roughness:.3,metalness:.9}),matte:new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.95,metalness:0})};
 var scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x${bgH},${c.hdriBg&&c.hdri?'0':'.025'});
 var camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.1,100);
-var R=new THREE.WebGLRenderer({antialias:true});R.setSize(innerWidth,innerHeight);R.setPixelRatio(Math.min(devicePixelRatio,2));
+var R=new THREE.WebGLRenderer({antialias:true});R.setSize(innerWidth,innerHeight);R.setPixelRatio(1);
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=${c.hdri?c.gExp*c.hdriInt:c.gExp};R.outputEncoding=THREE.sRGBEncoding;R.setClearColor(0x${bgH},${S.bgURL?0:1});
 
 document.body.prepend(R.domElement);
@@ -1584,7 +1593,7 @@ ${[1,2].map(si=>{
 }).join('')}
 var lR=new THREE.Group();
 var kD=${c.kDist};
-var kL=new THREE.SpotLight(parseInt('${c.keyC}'.slice(1),16),${c.keyI},kD*4,Math.PI/6,.65,1.2);kL.position.set(3*(kD/10),9*(kD/10),4*(kD/10));kL.target.position.set(0,2.2,0);kL.castShadow=true;kL.shadow.mapSize.set(2048,2048);kL.shadow.bias=-.001;lR.add(kL);lR.add(kL.target);
+var kL=new THREE.SpotLight(parseInt('${c.keyC}'.slice(1),16),${c.keyI},kD*4,Math.PI/6,.65,1.2);kL.position.set(3*(kD/10),9*(kD/10),4*(kD/10));kL.target.position.set(0,2.2,0);kL.castShadow=true;kL.shadow.mapSize.set(1024,1024);kL.shadow.bias=-.001;lR.add(kL);lR.add(kL.target);
 var fL=new THREE.SpotLight(0x99aabb,.45,25,Math.PI/5,.7,1.5);fL.position.set(-5,5,-3);fL.target.position.set(0,2.2,0);lR.add(fL);lR.add(fL.target);
 var rL=new THREE.SpotLight(parseInt('${c.rimC}'.slice(1),16),${c.rimI},25,Math.PI/6,.5,1.5);rL.position.set(-1,5,-6);rL.target.position.set(0,2.5,0);lR.add(rL);lR.add(rL.target);
 var xL=new THREE.PointLight(0xddaa77,.3,15);xL.position.set(2,.5,3);lR.add(xL);
@@ -1610,7 +1619,10 @@ var cp=0,ck=new THREE.Clock(),cutT=0,cutPh='show';
 var NSEG=12,shotQ=[],lastSh=-1;
 function nextShot(){if(shotQ.length===0){shotQ=[];for(var i=0;i<NSEG;i++)shotQ.push(i);for(var i=NSEG-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=shotQ[i];shotQ[i]=shotQ[j];shotQ[j]=t;}if(shotQ[0]===lastSh&&shotQ.length>1){t=shotQ[0];shotQ[0]=shotQ[1];shotQ[1]=t;}}lastSh=shotQ.shift();return lastSh/NSEG;}
 ${c.camMode==='cuts'?`var fadeEl=document.createElement('div');fadeEl.style.cssText='position:fixed;inset:0;background:#000;z-index:15;opacity:0;pointer-events:none;transition:opacity 0.8s;';document.body.appendChild(fadeEl);`:''}
-function anim(){requestAnimationFrame(anim);var dt=ck.getDelta(),el=ck.getElapsedTime();
+function anim(t){requestAnimationFrame(anim);
+// Cap to 30fps + pause when hidden
+if(!anim._lt)anim._lt=0;if(t-anim._lt<33||document.hidden)return;anim._lt=t;
+var dt=Math.min(0.05,ck.getDelta()),el=ck.getElapsedTime();
 if(mixer)mixer.update(dt);
 ${c.camMode==='cuts'?`cutT+=dt;if(cutPh==='show'&&cutT>${c.cutDur}-0.8){cutPh='fadeout';fadeEl.style.opacity='1';}if(cutPh==='fadeout'&&cutT>${c.cutDur}){cp=nextShot();cutPh='fadein';cutT=0;setTimeout(function(){fadeEl.style.opacity='0';cutPh='show';},100);}`:''}
 cp+=dt*${c.camSpd}/1000;if(cp>1)cp-=1;
@@ -1622,7 +1634,7 @@ ${c.dof?`bkp.uniforms['focus'].value=camera.position.distanceTo(mC);`:''}
 ${c.dust?`var pa=pG.attributes.position.array;for(var i=0;i<PC;i++){pa[i*3+1]+=pS[i]*dt*6;pa[i*3]+=Math.sin(el*.4+pD[i])*.0004;pa[i*3+2]+=Math.cos(el*.3+pD[i])*.0003;if(pa[i*3+1]>8){pa[i*3+1]=-.5;pa[i*3]=(Math.random()-.5)*14;pa[i*3+2]=(Math.random()-.5)*14;}}pG.attributes.position.needsUpdate=true;`:''}
 kL.intensity=${c.keyI}+Math.sin(el*.6)*.1+Math.sin(el*1.1)*.06;rL.intensity=${c.rimI}+Math.sin(el*.4+1)*.08;
 kL.target.position.set(mC.x,mC.y,mC.z);fL.target.position.set(mC.x,mC.y,mC.z);rL.target.position.set(mC.x,mC.y+.3,mC.z);l2.target.position.set(mC.x,mC.y,mC.z);
-fTimes.push(performance.now());if(fTimes.length>60){fTimes.shift();var avg=60000/(fTimes[fTimes.length-1]-fTimes[0]);if(avg<25&&adaptPR>.75){adaptPR=Math.max(.5,adaptPR-.25);R.setPixelRatio(adaptPR);}else if(avg>55&&adaptPR<Math.min(devicePixelRatio,2)){adaptPR=Math.min(Math.min(devicePixelRatio,2),adaptPR+.125);R.setPixelRatio(adaptPR);}}
+fTimes.push(performance.now());if(fTimes.length>30){fTimes.shift();var avg=30000/(fTimes[fTimes.length-1]-fTimes[0]);if(avg<20&&adaptPR>.5){adaptPR=Math.max(.4,adaptPR-.25);R.setPixelRatio(adaptPR);}else if(avg>28&&adaptPR<1.5){adaptPR=Math.min(1.5,adaptPR+.125);R.setPixelRatio(adaptPR);}}
 ${(c.bloom||c.dof)?'comp.render();':'R.render(scene,camera);'}}anim();
 addEventListener('resize',function(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);${(c.bloom||c.dof)?'comp.setSize(innerWidth,innerHeight);':''}});
 document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement){document.body.classList.remove('lv');document.getElementById('fs').classList.remove('g');}});
