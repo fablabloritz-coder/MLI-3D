@@ -202,7 +202,8 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <option value="contain">Seul (centré)</option>
 <option value="tile">Multiplié (répété)</option>
 </select></div>
-<div class="f"><label>Échelle du fond</label><div class="sr"><input type="range" id="bgScale" min="10" max="300" value="100"><span class="v" id="bgScaleV">100%</span></div></div>
+<div class="f"><label>Échelle du fond</label><div class="sr"><input type="range" id="bgScale" min="1" max="300" value="100"><span class="v" id="bgScaleV">100%</span></div></div>
+<div class="f"><label>Flou d'arrière-plan</label><div class="sr"><input type="range" id="bgBlur" min="0" max="20" value="0"><span class="v" id="bgBlurV">0</span></div></div>
 <div class="f"><label>Espacement H</label><div class="sr"><input type="range" id="bgGapH" min="0" max="200" value="0"><span class="v" id="bgGapHV">0px</span></div></div>
 <div class="f"><label>Espacement V</label><div class="sr"><input type="range" id="bgGapV" min="0" max="200" value="0"><span class="v" id="bgGapVV">0px</span></div></div>
 <div class="f"><label>Opacité fond custom</label><div class="sr"><input type="range" id="bgOpacity" min="5" max="100" value="85"><span class="v" id="bgOpacityV">85%</span></div></div>
@@ -455,7 +456,7 @@ window.getConfig=()=>({
   pulseColors:[$('pc1').value,$('pc2').value,$('pc3').value,$('pc4').value],
   showTrackName:$('togTrackName').classList.contains('on'),audioURL:S.audioURL,
   linePos:+$('linePos').value,
-  bgAnim:$('bgAnim').value,bgOpacity:+$('bgOpacity').value,bgMode:$('bgMode').value,bgScale:+$('bgScale').value,bgGapH:+$('bgGapH').value,bgGapV:+$('bgGapV').value,
+  bgAnim:$('bgAnim').value,bgOpacity:+$('bgOpacity').value,bgMode:$('bgMode').value,bgScale:+$('bgScale').value,bgGapH:+$('bgGapH').value,bgGapV:+$('bgGapV').value,bgBlur:+$('bgBlur').value,
 });
 
 // ═══ THREE.JS ═══
@@ -722,35 +723,34 @@ function U(){
     S._bgSphere.material.opacity=op;
     if(S.bgType==='image'){
       if(!S._bgImgEl){S._bgImgEl=new Image();S._bgImgEl.src=S.bgURL;S._bgImgEl.onload=()=>{S._bgImgReady=true;S._bgCacheKey='';U();};}
-      const sc=c.bgScale/100,gH=c.bgGapH,gV=c.bgGapV;
-      const cacheKey=S.bgURL+mode+sc+gH+gV;
+      const sc=c.bgScale/100,gH=c.bgGapH,gV=c.bgGapV,blur=c.bgBlur||0;
+      const cacheKey=S.bgURL+mode+sc+gH+gV+blur;
       if(S._bgImgReady&&cacheKey!==S._bgCacheKey){
         S._bgCacheKey=cacheKey;
         const img=S._bgImgEl;
         if(mode==='tile'){
-          // GPU tiling: draw ONE tile with gap padding on small canvas, let texture.repeat handle the rest
-          const tw=Math.round(img.width*sc),th=Math.round(img.height*sc);
+          const tw=Math.max(1,Math.round(img.width*sc)),th=Math.max(1,Math.round(img.height*sc));
           const cw=tw+gH,ch=th+gV;
           if(!S._bgCanvas||S._bgCanvas._mode!=='tile'){S._bgCanvas=document.createElement('canvas');S._bgCanvas._mode='tile';}
           S._bgCanvas.width=Math.max(1,cw);S._bgCanvas.height=Math.max(1,ch);
           const ctx=S._bgCanvas.getContext('2d');
-          ctx.clearRect(0,0,cw,ch);
-          ctx.drawImage(img,0,0,tw,th);
+          ctx.filter=blur>0?`blur(${blur}px)`:'none';
+          ctx.clearRect(0,0,cw,ch);ctx.drawImage(img,0,0,tw,th);ctx.filter='none';
           if(!S._bgTex||S._bgTex._mode!=='tile'){S._bgTex=new THREE.CanvasTexture(S._bgCanvas);S._bgTex._mode='tile';}
           S._bgTex.wrapS=THREE.RepeatWrapping;S._bgTex.wrapT=THREE.RepeatWrapping;
-          const rptX=512/Math.max(1,cw),rptY=512/Math.max(1,ch);
-          S._bgTex.repeat.set(rptX,rptY);
+          S._bgTex.repeat.set(512/Math.max(1,cw),512/Math.max(1,ch));
           S._bgTex.image=S._bgCanvas;S._bgTex.needsUpdate=true;
         }else{
-          // Cover/contain: single draw on 512px canvas
           if(!S._bgCanvas||S._bgCanvas._mode!=='single'){S._bgCanvas=document.createElement('canvas');S._bgCanvas.width=512;S._bgCanvas.height=512;S._bgCanvas._mode='single';}
           const ctx=S._bgCanvas.getContext('2d'),sz=512;
+          ctx.filter=blur>0?`blur(${blur}px)`:'none';
           ctx.clearRect(0,0,sz,sz);
           if(mode==='contain'){const r=Math.min(sz/img.width,sz/img.height)*sc;const w=img.width*r,h=img.height*r;ctx.drawImage(img,(sz-w)/2,(sz-h)/2,w,h);}
           else{const r=Math.max(sz/img.width,sz/img.height)*sc;const w=img.width*r,h=img.height*r;ctx.drawImage(img,(sz-w)/2,(sz-h)/2,w,h);}
+          ctx.filter='none';
           if(!S._bgTex||S._bgTex._mode!=='single'){S._bgTex=new THREE.CanvasTexture(S._bgCanvas);S._bgTex._mode='single';}
           S._bgTex.wrapS=THREE.ClampToEdgeWrapping;S._bgTex.wrapT=THREE.ClampToEdgeWrapping;
-          S._bgTex.repeat.set(1,1);
+          S._bgTex.repeat.set(1,1);S._bgTex.offset.set(0,0);
           S._bgTex.image=S._bgCanvas;S._bgTex.needsUpdate=true;
         }
       }
@@ -759,18 +759,28 @@ function U(){
     }else if(S.bgType==='video'){
       if(!S._bgVid2||S._bgVid2._srcUrl!==S.bgURL){
         S._bgVid2=document.createElement('video');S._bgVid2.src=S.bgURL;S._bgVid2._srcUrl=S.bgURL;S._bgVid2.loop=true;S._bgVid2.muted=true;S._bgVid2.play();
-        // Use VideoTexture for GPU-native performance
-        S._bgVidTex2=new THREE.VideoTexture(S._bgVid2);S._bgVidTex2.minFilter=THREE.LinearFilter;
       }
-      const sc=c.bgScale/100,gH=c.bgGapH,gV=c.bgGapV;
-      if(mode==='tile'){
-        S._bgVidTex2.wrapS=THREE.RepeatWrapping;S._bgVidTex2.wrapT=THREE.RepeatWrapping;
-        const rptX=1/Math.max(0.1,sc),rptY=1/Math.max(0.1,sc);
-        S._bgVidTex2.repeat.set(rptX,rptY);
+      const sc=c.bgScale/100,gH=c.bgGapH,gV=c.bgGapV,blur=c.bgBlur||0;
+      const needsCanvas=blur>0||(mode==='tile'&&(gH>0||gV>0));
+      if(needsCanvas){
+        // Canvas path: needed for blur or tile+gap
+        if(!S._bgVidCanvas){S._bgVidCanvas=document.createElement('canvas');S._bgVidCanvas.width=512;S._bgVidCanvas.height=512;}
+        if(!S._bgVidTex2||S._bgVidTex2._isVT){S._bgVidTex2=new THREE.CanvasTexture(S._bgVidCanvas);S._bgVidTex2._isVT=false;}
+        S._bgVidNeedsCanvasDraw=true;S._bgVidBlur=blur;S._bgVidSc=sc;S._bgVidGH=gH;S._bgVidGV=gV;S._bgVidDrawMode=mode;
+        if(mode==='tile'){S._bgVidTex2.wrapS=THREE.RepeatWrapping;S._bgVidTex2.wrapT=THREE.RepeatWrapping;}
+        else{S._bgVidTex2.wrapS=THREE.ClampToEdgeWrapping;S._bgVidTex2.wrapT=THREE.ClampToEdgeWrapping;}
+        S._bgVidTex2.repeat.set(1,1);S._bgVidTex2.offset.set(0,0);
       }else{
-        S._bgVidTex2.wrapS=THREE.ClampToEdgeWrapping;S._bgVidTex2.wrapT=THREE.ClampToEdgeWrapping;
-        S._bgVidTex2.repeat.set(1/Math.max(0.1,sc),1/Math.max(0.1,sc));
-        S._bgVidTex2.offset.set((1-1/Math.max(0.1,sc))/2,(1-1/Math.max(0.1,sc))/2);
+        // GPU path: VideoTexture, no canvas
+        if(!S._bgVidTex2||!S._bgVidTex2._isVT){S._bgVidTex2=new THREE.VideoTexture(S._bgVid2);S._bgVidTex2.minFilter=THREE.LinearFilter;S._bgVidTex2._isVT=true;}
+        S._bgVidNeedsCanvasDraw=false;
+        if(mode==='tile'){
+          S._bgVidTex2.wrapS=THREE.RepeatWrapping;S._bgVidTex2.wrapT=THREE.RepeatWrapping;
+          S._bgVidTex2.repeat.set(1/Math.max(0.01,sc),1/Math.max(0.01,sc));S._bgVidTex2.offset.set(0,0);
+        }else{
+          S._bgVidTex2.wrapS=THREE.ClampToEdgeWrapping;S._bgVidTex2.wrapT=THREE.ClampToEdgeWrapping;
+          const rs=1/Math.max(0.01,sc);S._bgVidTex2.repeat.set(rs,rs);S._bgVidTex2.offset.set((1-rs)/2,(1-rs)/2);
+        }
       }
       S._bgSphere.material.map=S._bgVidTex2;S._bgSphere.material.needsUpdate=true;
       scene.background=null;
@@ -886,7 +896,7 @@ function U(){
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
   $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';$('vizScaleV').textContent=c.vizScale+'%';
-  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';$('bgScaleV').textContent=c.bgScale+'%';$('bgGapHV').textContent=c.bgGapH+'px';$('bgGapVV').textContent=c.bgGapV+'px';
+  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';$('bgScaleV').textContent=c.bgScale+'%';$('bgGapHV').textContent=c.bgGapH+'px';$('bgGapVV').textContent=c.bgGapV+'px';$('bgBlurV').textContent=c.bgBlur;
 
   // Watermark
   const wm=$('wmOv');
@@ -1236,7 +1246,7 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',dustSize:'dustSize'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',dustSize:'dustSize'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
   if(c.slots&&c.slots[0]){
@@ -1373,7 +1383,32 @@ function anim(){
     if(scfg.spin>0&&sl.group)sl.group.rotation.y+=(scfg.spin/100)*dt;
   }
   renderBgFrame();
-  // Video bg: VideoTexture auto-updates on GPU, no CPU draw needed
+  // Video bg canvas draw (only when blur or tile+gap active)
+  if(S._bgVidNeedsCanvasDraw&&S._bgVid2&&S._bgVidCanvas&&S._bgVidTex2&&!S._bgVid2.paused){
+    if(!S._bgVidLast||el-S._bgVidLast>0.04){
+      S._bgVidLast=el;
+      const vc=S._bgVidCanvas,vctx=vc.getContext('2d'),vid=S._bgVid2,sz=512;
+      const sc=S._bgVidSc||1,blur=S._bgVidBlur||0,gH=S._bgVidGH||0,gV=S._bgVidGV||0,dm=S._bgVidDrawMode||'cover';
+      vctx.filter=blur>0?`blur(${blur}px)`:'none';
+      vctx.clearRect(0,0,sz,sz);
+      if(vid.videoWidth){
+        if(dm==='tile'){
+          const tw=Math.max(1,Math.round(vid.videoWidth*sc)),th=Math.max(1,Math.round(vid.videoHeight*sc));
+          const stX=tw+gH,stY=th+gV;
+          for(let y=0;y<sz;y+=stY)for(let x=0;x<sz;x+=stX)vctx.drawImage(vid,x,y,tw,th);
+          S._bgVidTex2.repeat.set(1,1);
+        }else if(dm==='contain'){
+          const r=Math.min(sz/vid.videoWidth,sz/vid.videoHeight)*sc;const w=vid.videoWidth*r,h=vid.videoHeight*r;
+          vctx.drawImage(vid,(sz-w)/2,(sz-h)/2,w,h);
+        }else{
+          const r=Math.max(sz/vid.videoWidth,sz/vid.videoHeight)*sc;const w=vid.videoWidth*r,h=vid.videoHeight*r;
+          vctx.drawImage(vid,(sz-w)/2,(sz-h)/2,w,h);
+        }
+      }
+      vctx.filter='none';
+      S._bgVidTex2.needsUpdate=true;
+    }
+  }
 
   if(bokehPass.enabled)bokehPass.uniforms['focus'].value=cam.position.distanceTo(mC);
 
@@ -1601,39 +1636,56 @@ document.addEventListener('keydown',function(e){
   setTimeout(function(){si.classList.remove('sh');},2000);
   try{window.opener.loadScn(k-1);}catch(ex){}
 });
-// Background — GPU-optimized: image on canvas+RepeatWrapping, video on VideoTexture
+// Background — GPU-optimized with blur support
 ${S.bgURL&&S.bgType==='image'?`
 var bgImg=new Image();bgImg.src='${S.bgURL}';
 var bgSph=new THREE.Mesh(new THREE.SphereGeometry(80,32,32),new THREE.MeshBasicMaterial({side:THREE.BackSide,transparent:true,fog:false,opacity:${c.bgOpacity/100}}));
 scene.add(bgSph);
 bgImg.onload=function(){
-  var sc=${c.bgScale}/100;
+  var sc=${c.bgScale}/100,blur=${c.bgBlur||0};
   ${(c.bgMode||'cover')==='tile'?`
-  var tw=Math.round(bgImg.width*sc),th=Math.round(bgImg.height*sc),gH=${c.bgGapH},gV=${c.bgGapV};
+  var tw=Math.max(1,Math.round(bgImg.width*sc)),th=Math.max(1,Math.round(bgImg.height*sc)),gH=${c.bgGapH},gV=${c.bgGapV};
   var cv=document.createElement('canvas');cv.width=Math.max(1,tw+gH);cv.height=Math.max(1,th+gV);
-  var ctx=cv.getContext('2d');ctx.drawImage(bgImg,0,0,tw,th);
+  var ctx=cv.getContext('2d');if(blur>0)ctx.filter='blur('+blur+'px)';ctx.drawImage(bgImg,0,0,tw,th);ctx.filter='none';
   var tex=new THREE.CanvasTexture(cv);tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.RepeatWrapping;
   tex.repeat.set(512/Math.max(1,tw+gH),512/Math.max(1,th+gV));
   `:`
   var cv=document.createElement('canvas');cv.width=512;cv.height=512;var ctx=cv.getContext('2d');
+  if(blur>0)ctx.filter='blur('+blur+'px)';
   ${(c.bgMode||'cover')==='contain'?`var r=Math.min(512/bgImg.width,512/bgImg.height)*sc;var w=bgImg.width*r,h=bgImg.height*r;ctx.drawImage(bgImg,(512-w)/2,(512-h)/2,w,h);`
   :`var r=Math.max(512/bgImg.width,512/bgImg.height)*sc;var w=bgImg.width*r,h=bgImg.height*r;ctx.drawImage(bgImg,(512-w)/2,(512-h)/2,w,h);`}
-  var tex=new THREE.CanvasTexture(cv);
+  ctx.filter='none';var tex=new THREE.CanvasTexture(cv);
   `}
   bgSph.material.map=tex;bgSph.material.needsUpdate=true;
 };`:''}
 ${S.bgURL&&S.bgType==='video'?`
 var bgVid=document.createElement('video');bgVid.src='${S.bgURL}';bgVid.loop=true;bgVid.muted=true;bgVid.autoplay=true;bgVid.play();
-var bgTex=new THREE.VideoTexture(bgVid);bgTex.minFilter=THREE.LinearFilter;
-${(c.bgMode||'cover')==='tile'?`
-bgTex.wrapS=THREE.RepeatWrapping;bgTex.wrapT=THREE.RepeatWrapping;
-bgTex.repeat.set(${1/Math.max(0.1,c.bgScale/100)},${1/Math.max(0.1,c.bgScale/100)});
-`:`
-bgTex.wrapS=THREE.ClampToEdgeWrapping;bgTex.wrapT=THREE.ClampToEdgeWrapping;
-var vsc=${1/Math.max(0.1,c.bgScale/100)};bgTex.repeat.set(vsc,vsc);bgTex.offset.set((1-vsc)/2,(1-vsc)/2);
-`}
-var bgSph=new THREE.Mesh(new THREE.SphereGeometry(80,32,32),new THREE.MeshBasicMaterial({side:THREE.BackSide,map:bgTex,transparent:true,fog:false,opacity:${c.bgOpacity/100}}));
-scene.add(bgSph);`:''}
+var vBlur=${c.bgBlur||0},vSc=${c.bgScale}/100,vGH=${c.bgGapH},vGV=${c.bgGapV},vMode='${c.bgMode||'cover'}';
+var needsCv=vBlur>0||(vMode==='tile'&&(vGH>0||vGV>0));
+var bgSph=new THREE.Mesh(new THREE.SphereGeometry(80,32,32),new THREE.MeshBasicMaterial({side:THREE.BackSide,transparent:true,fog:false,opacity:${c.bgOpacity/100}}));
+scene.add(bgSph);
+if(needsCv){
+  var bgCv=document.createElement('canvas');bgCv.width=512;bgCv.height=512;
+  var bgTex=new THREE.CanvasTexture(bgCv);bgSph.material.map=bgTex;
+  function drawVBg(){requestAnimationFrame(drawVBg);if(bgVid.paused||!bgVid.videoWidth)return;
+    var ctx=bgCv.getContext('2d'),sz=512;
+    if(vBlur>0)ctx.filter='blur('+vBlur+'px)';ctx.clearRect(0,0,sz,sz);
+    if(vMode==='tile'){var tw=Math.max(1,Math.round(bgVid.videoWidth*vSc)),th=Math.max(1,Math.round(bgVid.videoHeight*vSc));var stX=tw+vGH,stY=th+vGV;for(var y=0;y<sz;y+=stY)for(var x=0;x<sz;x+=stX)ctx.drawImage(bgVid,x,y,tw,th);}
+    else if(vMode==='contain'){var r=Math.min(sz/bgVid.videoWidth,sz/bgVid.videoHeight)*vSc;var w=bgVid.videoWidth*r,h=bgVid.videoHeight*r;ctx.drawImage(bgVid,(sz-w)/2,(sz-h)/2,w,h);}
+    else{var r=Math.max(sz/bgVid.videoWidth,sz/bgVid.videoHeight)*vSc;var w=bgVid.videoWidth*r,h=bgVid.videoHeight*r;ctx.drawImage(bgVid,(sz-w)/2,(sz-h)/2,w,h);}
+    ctx.filter='none';bgTex.needsUpdate=true;
+  }drawVBg();
+}else{
+  var bgTex=new THREE.VideoTexture(bgVid);bgTex.minFilter=THREE.LinearFilter;
+  ${(c.bgMode||'cover')==='tile'?`
+  bgTex.wrapS=THREE.RepeatWrapping;bgTex.wrapT=THREE.RepeatWrapping;
+  bgTex.repeat.set(${1/Math.max(0.01,c.bgScale/100)},${1/Math.max(0.01,c.bgScale/100)});
+  `:`
+  bgTex.wrapS=THREE.ClampToEdgeWrapping;bgTex.wrapT=THREE.ClampToEdgeWrapping;
+  var vsc=${1/Math.max(0.01,c.bgScale/100)};bgTex.repeat.set(vsc,vsc);bgTex.offset.set((1-vsc)/2,(1-vsc)/2);
+  `}
+  bgSph.material.map=bgTex;
+}`:''}
 ${c.bgAnim!=='none'&&!S.bgURL?`
 var bgCv=document.createElement('canvas');bgCv.width=512;bgCv.height=512;var bgCtx=bgCv.getContext('2d');
 var bgTex=new THREE.CanvasTexture(bgCv);scene.background=bgTex;
