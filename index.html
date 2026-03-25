@@ -159,8 +159,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="st">Titre</div>
 <div class="f"><label>Police</label><select id="fontT"><option value="'Cormorant Garamond',serif" selected>Cormorant Garamond</option><option value="'Playfair Display',serif">Playfair Display</option><option value="'Cinzel',serif">Cinzel</option><option value="'Montserrat',sans-serif">Montserrat</option><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Raleway',sans-serif">Raleway</option><option value="custom">✏️ Police personnalisée…</option></select></div>
-<div class="f" id="customFontRow" style="display:none"><label>Nom de la police</label><input type="text" id="customFont" placeholder="Ex: Arial, Comic Sans MS…" style="width:100%;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--t);font-size:12px;"></div>
-<div class="fh" id="customFontHelp" style="display:none;text-align:left;margin-bottom:6px;">Tapez le nom exact d'une police installée sur votre PC. Elle sera visible uniquement sur les machines qui l'ont installée.</div>
+<div class="f" id="customFontRow" style="display:none"><label>Nom de la police</label><div style="position:relative"><input type="text" id="customFont" list="fontList" autocomplete="off" placeholder="Tapez pour rechercher…" style="width:100%;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--t);font-size:12px;"><datalist id="fontList"></datalist></div></div>
+<div id="customFontPreview" style="display:none;padding:6px 10px;margin-bottom:6px;background:rgba(255,255,255,.04);border-radius:4px;font-size:16px;color:var(--t);text-align:center;">Aperçu de la police</div>
+<div class="fh" id="customFontHelp" style="display:none;text-align:left;margin-bottom:6px;">Sélectionnez une police installée sur votre PC. Nécessite Chrome ou Edge.</div>
 <div class="f"><label>Titre</label><input type="text" id="tT" value="Lycée Henri Loritz"></div>
 <div class="f"><label>Taille</label><div class="sr"><input type="range" id="tTsz" min="12" max="60" value="28"><span class="v" id="tTszV">28</span></div></div>
 <div class="f"><label>Sous-titre</label><input type="text" id="tS" value="Nancy — Établissement public"></div>
@@ -973,15 +974,41 @@ $('mmModal').addEventListener('click',e=>{if(e.target===$('mmModal'))closeMiniMa
 const _origU=U;
 U=function(){_origU.apply(this,arguments);drawMM($('miniMap'));if(mmPopOpen)drawMM($('miniMapBig'));};
 
-// Custom font toggle
+// Custom font system with autocomplete
+let systemFonts=[];
+const FALLBACK_FONTS=['Arial','Arial Black','Calibri','Cambria','Candara','Century Gothic','Comic Sans MS','Consolas','Constantia','Corbel','Courier New','Franklin Gothic','Garamond','Georgia','Impact','Lucida Console','Lucida Sans','Palatino Linotype','Segoe UI','Tahoma','Times New Roman','Trebuchet MS','Verdana','Book Antiqua','Bookman Old Style','Century Schoolbook','Copperplate Gothic','Didot','Futura','Gill Sans','Goudy Old Style','Helvetica','Optima','Perpetua','Rockwell','Baskerville'];
+async function loadSystemFonts(){
+  if(window.queryLocalFonts){
+    try{
+      const fonts=await window.queryLocalFonts();
+      const seen=new Set();
+      fonts.forEach(f=>{if(!seen.has(f.family)){seen.add(f.family);systemFonts.push(f.family);}});
+      systemFonts.sort((a,b)=>a.localeCompare(b));
+    }catch(e){systemFonts=FALLBACK_FONTS.slice();}
+  }else{systemFonts=FALLBACK_FONTS.slice();}
+  populateFontList('');
+}
+function populateFontList(filter){
+  const dl=$('fontList');dl.innerHTML='';
+  const f=filter.toLowerCase();
+  const matches=f?systemFonts.filter(n=>n.toLowerCase().includes(f)):systemFonts;
+  matches.slice(0,50).forEach(name=>{const o=document.createElement('option');o.value=name;dl.appendChild(o);});
+}
 $('fontT').addEventListener('change',function(){
   const isCustom=this.value==='custom';
   $('customFontRow').style.display=isCustom?'':'none';
   $('customFontHelp').style.display=isCustom?'':'none';
-  if(isCustom)$('customFont').focus();
+  $('customFontPreview').style.display=isCustom?'':'none';
+  if(isCustom){$('customFont').focus();if(!systemFonts.length)loadSystemFonts();}
   U();
 });
-$('customFont').addEventListener('input',U);
+$('customFont').addEventListener('input',function(){
+  populateFontList(this.value);
+  const pv=$('customFontPreview');
+  if(this.value){pv.style.fontFamily="'"+this.value+"',sans-serif";pv.textContent='Lycée Henri Loritz — '+this.value;pv.style.display='';}
+  else{pv.style.display='none';}
+  U();
+});
 
 document.querySelectorAll('#P input,#P select').forEach(el=>{el.addEventListener('input',U);el.addEventListener('change',U);});
 
@@ -1201,8 +1228,11 @@ function loadC_fromObj(c){
   if(c.fontT){
     const opts=[...document.querySelectorAll('#fontT option')].map(o=>o.value);
     if(!opts.includes(c.fontT)&&c.fontT!=='custom'){
-      $('fontT').value='custom';$('customFont').value=c.fontT.replace(/^'|',.*$/g,'');
+      $('fontT').value='custom';const fname=c.fontT.replace(/^'|',.*$/g,'');
+      $('customFont').value=fname;
       $('customFontRow').style.display='';$('customFontHelp').style.display='';
+      $('customFontPreview').style.display='';$('customFontPreview').style.fontFamily=c.fontT;$('customFontPreview').textContent='Lycée Henri Loritz — '+fname;
+      if(!systemFonts.length)loadSystemFonts();
     }
   }
   if(c.pulseColors&&c.pulseColors.length>=4){$('pc1').value=c.pulseColors[0];$('pc2').value=c.pulseColors[1];$('pc3').value=c.pulseColors[2];$('pc4').value=c.pulseColors[3];}
