@@ -310,7 +310,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <option value="multi">Cycle de couleurs</option>
 </select></div>
 <div class="f"><label>Force de réaction</label><div class="sr"><input type="range" id="pulseForce" min="10" max="100" value="60"><span class="v" id="pulseForceV">60%</span></div></div>
-<div class="fh" style="text-align:left;margin-bottom:6px;">Faible = subtil, Fort = agressif. En mode cycle, chaque beat change de couleur.</div>
+<div class="f"><label>Puissance lumineuse max</label><div class="sr"><input type="range" id="pulseBright" min="5" max="50" value="20"><span class="v" id="pulseBrightV">2.0</span></div></div>
+<div class="f"><label>Vitesse de retombée</label><div class="sr"><input type="range" id="pulseDecay" min="80" max="98" value="92"><span class="v" id="pulseDecayV">92%</span></div></div>
+<div class="fh" style="text-align:left;margin-bottom:6px;">Force = sensibilité aux beats. Puissance = luminosité des flashs. Retombée = durée du flash (98%=long, 80%=court).</div>
 <div class="st">Couleurs de pulsation</div>
 <div style="display:flex;gap:4px;">
 <div class="cr" style="flex:1"><input type="color" id="pc1" value="#ff4466"><label>1</label></div>
@@ -432,7 +434,7 @@ window.getConfig=()=>({
   logoPos:$('logoPos').value,logoSz:+$('logoSz').value,logoURL:S.logoURL,
   wm:$('togWm').classList.contains('on'),wmTxt:$('wmTxt').value,wmSz:+$('wmSz').value,wmOp:+$('wmOp').value,wmPos:$('wmPos').value,
   audioVol:+$('aVol').value,audioViz:$('togAudioViz').classList.contains('on'),audioLoop:$('togLoop').classList.contains('on'),vizScale:+$('vizScale').value,vizColor:$('vizColor').value,
-  lightPulse:$('lightPulse').value,pulseForce:+$('pulseForce').value,
+  lightPulse:$('lightPulse').value,pulseForce:+$('pulseForce').value,pulseBright:+$('pulseBright').value/10,pulseDecay:+$('pulseDecay').value/100,
   pulseColors:[$('pc1').value,$('pc2').value,$('pc3').value,$('pc4').value],
   showTrackName:$('togTrackName').classList.contains('on'),audioURL:S.audioURL,
   linePos:+$('linePos').value,
@@ -686,40 +688,53 @@ function U(){
 
   pvE.style.background=c.bg;
 
-  // Background rendering — all via scene.background (3D sphere)
+  // Background rendering — custom image/video on 3D sphere, animated on scene.background
   pvE.style.backgroundImage='none';
   if(S._bgVidEl){S._bgVidEl.remove();S._bgVidEl=null;}
 
   if(S.bgURL&&!c.hdri){
     const mode=c.bgMode||'cover';
     const op=c.bgOpacity/100;
+    // Create bg sphere if needed
+    if(!S._bgSphere){
+      const geo=new THREE.SphereGeometry(80,32,32);
+      const mat=new THREE.MeshBasicMaterial({side:THREE.BackSide,transparent:true});
+      S._bgSphere=new THREE.Mesh(geo,mat);
+      scene.add(S._bgSphere);
+    }
+    S._bgSphere.visible=true;
+    S._bgSphere.material.opacity=op;
     if(S.bgType==='image'){
-      // Draw image to canvas with mode + opacity → scene.background
-      if(!S._bgImgEl){S._bgImgEl=new Image();S._bgImgEl.src=S.bgURL;S._bgImgEl.onload=()=>U();}
+      if(!S._bgImgEl){S._bgImgEl=new Image();S._bgImgEl.src=S.bgURL;S._bgImgEl.onload=()=>{S._bgImgReady=true;U();};}
       if(!S._bgCanvas){S._bgCanvas=document.createElement('canvas');S._bgCanvas.width=1024;S._bgCanvas.height=1024;S._bgTex=new THREE.CanvasTexture(S._bgCanvas);}
-      if(S._bgImgEl.complete){
+      if(S._bgImgReady&&S._bgImgEl.complete){
         const cv=S._bgCanvas,ctx=cv.getContext('2d'),img=S._bgImgEl;
-        ctx.fillStyle=c.bg;ctx.fillRect(0,0,1024,1024);ctx.globalAlpha=op;
+        ctx.fillStyle=c.bg;ctx.fillRect(0,0,1024,1024);ctx.globalAlpha=1;
         if(mode==='tile'){for(let y=0;y<1024;y+=img.height)for(let x=0;x<1024;x+=img.width)ctx.drawImage(img,x,y);}
         else if(mode==='contain'){const r=Math.min(1024/img.width,1024/img.height);const w=img.width*r,h=img.height*r;ctx.drawImage(img,(1024-w)/2,(1024-h)/2,w,h);}
         else{const r=Math.max(1024/img.width,1024/img.height);const w=img.width*r,h=img.height*r;ctx.drawImage(img,(1024-w)/2,(1024-h)/2,w,h);}
-        ctx.globalAlpha=1;S._bgTex.needsUpdate=true;
+        S._bgTex.needsUpdate=true;
       }
-      scene.background=S._bgTex;
+      S._bgSphere.material.map=S._bgTex;S._bgSphere.material.needsUpdate=true;
+      scene.background=null;
     }else if(S.bgType==='video'){
       if(!S._bgVid2||S._bgVid2.src!==S.bgURL){
         S._bgVid2=document.createElement('video');S._bgVid2.src=S.bgURL;S._bgVid2.loop=true;S._bgVid2.muted=true;S._bgVid2.play();
         S._bgVidCanvas=document.createElement('canvas');S._bgVidCanvas.width=1024;S._bgVidCanvas.height=1024;
-        S._bgVidTex2=new THREE.CanvasTexture(S._bgVidCanvas);S._bgVidNeedsDraw=true;
+        S._bgVidTex2=new THREE.CanvasTexture(S._bgVidCanvas);
       }
-      scene.background=S._bgVidTex2;
+      S._bgSphere.material.map=S._bgVidTex2;S._bgSphere.material.needsUpdate=true;
+      scene.background=null;
     }
-  }else if(c.bgAnim!=='none'&&!S.bgURL&&!c.hdri){
-    if(!S._bgAnimCanvas){S._bgAnimCanvas=document.createElement('canvas');S._bgAnimCanvas.width=512;S._bgAnimCanvas.height=512;S._bgAnimTex=new THREE.CanvasTexture(S._bgAnimCanvas);}
-    if(S._bgAnimType!==c.bgAnim){S._bgAnimType=c.bgAnim;S._bgAnimT=0;}
-    scene.background=S._bgAnimTex;
-  }else if(!c.hdri||!c.hdriBg){
-    scene.background=null;
+  }else{
+    if(S._bgSphere)S._bgSphere.visible=false;
+    if(c.bgAnim!=='none'&&!S.bgURL&&!c.hdri){
+      if(!S._bgAnimCanvas){S._bgAnimCanvas=document.createElement('canvas');S._bgAnimCanvas.width=512;S._bgAnimCanvas.height=512;S._bgAnimTex=new THREE.CanvasTexture(S._bgAnimCanvas);}
+      if(S._bgAnimType!==c.bgAnim){S._bgAnimType=c.bgAnim;S._bgAnimT=0;}
+      scene.background=S._bgAnimTex;
+    }else if(!c.hdri||!c.hdriBg){
+      scene.background=null;
+    }
   }
 
   const bgI=parseInt(c.bg.slice(1),16);scene.fog.color.set(bgI);R.setClearColor(bgI,1);
@@ -822,7 +837,7 @@ function U(){
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
   $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';$('vizScaleV').textContent=c.vizScale+'%';
-  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';
+  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';
 
   // Watermark
   const wm=$('wmOv');
@@ -896,14 +911,12 @@ function drawMiniMap(){
     const cfg=getSlotCfg(i);
     const sx=cx+cfg.posX*scale,sy=cy+cfg.posZ*scale;
     const isActive=i===activeSlot;
+    // Glow for active
+    if(isActive){mmCtx.fillStyle='rgba(255,68,102,0.15)';mmCtx.beginPath();mmCtx.arc(sx,sy,12,0,Math.PI*2);mmCtx.fill();}
     mmCtx.fillStyle=isActive?'#ff4466':i===0?'#ddcc88':'#88aacc';
-    mmCtx.beginPath();mmCtx.arc(sx,sy,isActive?6:4,0,Math.PI*2);mmCtx.fill();
-    // Direction indicator
-    const a=(cfg.rot||0)*Math.PI/180;
-    mmCtx.strokeStyle=mmCtx.fillStyle;mmCtx.lineWidth=2;
-    mmCtx.beginPath();mmCtx.moveTo(sx,sy);mmCtx.lineTo(sx+Math.sin(a)*10,sy-Math.cos(a)*10);mmCtx.stroke();
+    mmCtx.beginPath();mmCtx.arc(sx,sy,isActive?5:4,0,Math.PI*2);mmCtx.fill();
     // Label
-    mmCtx.fillStyle='rgba(255,255,255,0.7)';mmCtx.font='9px sans-serif';mmCtx.textAlign='center';
+    mmCtx.fillStyle='rgba(255,255,255,0.8)';mmCtx.font='bold 9px sans-serif';mmCtx.textAlign='center';
     mmCtx.fillText((i+1)+'',sx,sy-9);
   }
   // Camera indicator
@@ -1128,6 +1141,8 @@ function loadC_fromObj(c){
     for(let si=0;si<3;si++)if(c.slots[si])SLOTS[si]._cfg=c.slots[si];
   }
   if(c.gExp!=null)$('gExp').value=Math.round(c.gExp*10);
+  if(c.pulseBright!=null)$('pulseBright').value=Math.round(c.pulseBright*10);
+  if(c.pulseDecay!=null)$('pulseDecay').value=Math.round(c.pulseDecay*100);
   if(c.keyI!=null)$('kI').value=Math.round(c.keyI*10);if(c.kDist!=null)$('kDist').value=c.kDist;
   if(c.rimI!=null)$('rI').value=Math.round(c.rimI*10);if(c.ambI!=null)$('aI').value=Math.round(c.ambI*10);
   if(c.l2I!=null)$('l2I').value=Math.round(c.l2I*10);
@@ -1479,28 +1494,32 @@ document.addEventListener('keydown',function(e){
   setTimeout(function(){si.classList.remove('sh');},2000);
   try{window.opener.loadScn(k-1);}catch(ex){}
 });
-// Background — all via scene.background (3D sphere)
+// Background — custom image/video on 3D sphere, animated on scene.background
 ${S.bgURL&&S.bgType==='image'?`
 var bgImg=new Image();bgImg.src='${S.bgURL}';
 var bgCv=document.createElement('canvas');bgCv.width=1024;bgCv.height=1024;var bgCtx=bgCv.getContext('2d');
 var bgTex=new THREE.CanvasTexture(bgCv);
+var bgSph=new THREE.Mesh(new THREE.SphereGeometry(80,32,32),new THREE.MeshBasicMaterial({side:THREE.BackSide,map:bgTex,transparent:true,opacity:${c.bgOpacity/100}}));
+scene.add(bgSph);
 bgImg.onload=function(){
-  bgCtx.fillStyle='${c.bg}';bgCtx.fillRect(0,0,1024,1024);bgCtx.globalAlpha=${c.bgOpacity/100};
+  bgCtx.fillStyle='${c.bg}';bgCtx.fillRect(0,0,1024,1024);
   ${(c.bgMode||'cover')==='tile'?`for(var y=0;y<1024;y+=bgImg.height)for(var x=0;x<1024;x+=bgImg.width)bgCtx.drawImage(bgImg,x,y);`
   :(c.bgMode||'cover')==='contain'?`var r=Math.min(1024/bgImg.width,1024/bgImg.height);var w=bgImg.width*r,h=bgImg.height*r;bgCtx.drawImage(bgImg,(1024-w)/2,(1024-h)/2,w,h);`
   :`var r=Math.max(1024/bgImg.width,1024/bgImg.height);var w=bgImg.width*r,h=bgImg.height*r;bgCtx.drawImage(bgImg,(1024-w)/2,(1024-h)/2,w,h);`}
-  bgCtx.globalAlpha=1;bgTex.needsUpdate=true;scene.background=bgTex;
+  bgTex.needsUpdate=true;
 };`:''}
 ${S.bgURL&&S.bgType==='video'?`
 var bgVid=document.createElement('video');bgVid.src='${S.bgURL}';bgVid.loop=true;bgVid.muted=true;bgVid.autoplay=true;bgVid.play();
 var bgCv=document.createElement('canvas');bgCv.width=1024;bgCv.height=1024;var bgCtx=bgCv.getContext('2d');
-var bgTex=new THREE.CanvasTexture(bgCv);scene.background=bgTex;
+var bgTex=new THREE.CanvasTexture(bgCv);
+var bgSph=new THREE.Mesh(new THREE.SphereGeometry(80,32,32),new THREE.MeshBasicMaterial({side:THREE.BackSide,map:bgTex,transparent:true,opacity:${c.bgOpacity/100}}));
+scene.add(bgSph);
 function drawVidBg(){requestAnimationFrame(drawVidBg);if(bgVid.paused||!bgVid.videoWidth)return;
-  bgCtx.fillStyle='${c.bg}';bgCtx.fillRect(0,0,1024,1024);bgCtx.globalAlpha=${c.bgOpacity/100};
+  bgCtx.fillStyle='${c.bg}';bgCtx.fillRect(0,0,1024,1024);
   ${(c.bgMode||'cover')==='tile'?`var tw=bgVid.videoWidth,th=bgVid.videoHeight;for(var y=0;y<1024;y+=th)for(var x=0;x<1024;x+=tw)bgCtx.drawImage(bgVid,x,y,tw,th);`
   :(c.bgMode||'cover')==='contain'?`var r=Math.min(1024/bgVid.videoWidth,1024/bgVid.videoHeight);var w=bgVid.videoWidth*r,h=bgVid.videoHeight*r;bgCtx.drawImage(bgVid,(1024-w)/2,(1024-h)/2,w,h);`
   :`var r=Math.max(1024/bgVid.videoWidth,1024/bgVid.videoHeight);var w=bgVid.videoWidth*r,h=bgVid.videoHeight*r;bgCtx.drawImage(bgVid,(1024-w)/2,(1024-h)/2,w,h);`}
-  bgCtx.globalAlpha=1;bgTex.needsUpdate=true;
+  bgTex.needsUpdate=true;
 }drawVidBg();`:''}
 ${c.bgAnim!=='none'&&!S.bgURL?`
 var bgCv=document.createElement('canvas');bgCv.width=512;bgCv.height=512;var bgCtx=bgCv.getContext('2d');
@@ -1604,16 +1623,16 @@ function pulseLights(){
   var threshold=fluxAvg*(1.5+(1-FORCE)*2);// lower force = higher threshold
   beatCooldown=Math.max(0,beatCooldown-1);
   if(flux>threshold&&flux>0.02&&beatCooldown<=0){
-    beatDecay=FORCE*1.5;// stronger force = brighter flash
+    beatDecay=${c.pulseBright};// stronger force = brighter flash
     beatCooldown=Math.round(20+(1-FORCE)*15);// faster beats at higher force
     ${c.lightPulse==='multi'?`pColorIdx=(pColorIdx+1)%pColors.length;`:''}
   }
   // Also add continuous subtle energy response
   var energy=0;for(var i=0;i<aBufLen;i++)energy+=aDataArr[i];
   energy/=(aBufLen*255);
-  var continuous=energy*FORCE*0.4;// subtle base glow
-  beatDecay*=0.92;
-  var pI=Math.min(3,beatDecay+continuous);
+  var continuous=energy*FORCE*${c.pulseBright*0.2};// subtle base glow
+  beatDecay*=${c.pulseDecay};
+  var pI=Math.min(${c.pulseBright*1.5},beatDecay+continuous);
   var cc=pColors[${c.lightPulse==='single'?'0':'pColorIdx'}];
   for(var hi=0;hi<haloLights.length;hi++){
     haloLights[hi].color.setRGB(cc.r,cc.g,cc.b);
