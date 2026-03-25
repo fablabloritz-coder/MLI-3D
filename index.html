@@ -128,9 +128,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Position Z</label><div class="sr"><input type="range" id="sPosZ" min="-50" max="50" value="0"><span class="v" id="sPosZV">0</span></div></div>
 <div class="f"><label>Auto-rotation</label><div class="sr"><input type="range" id="sSpin" min="0" max="30" value="0"><span class="v" id="sSpinV">0</span></div></div>
 </div>
-<div class="st">Placement (vue du dessus)</div>
-<canvas id="miniMap" style="width:100%;height:120px;border-radius:6px;background:#111;cursor:crosshair;display:block;margin-bottom:6px;"></canvas>
-<div class="fh" style="text-align:left;margin-bottom:6px;">Cliquez pour positionner le modèle actif. 🔴=actif, ⚪=autres, 📷=caméra</div>
+<div class="st">Placement (vue du dessus) <button onclick="const m=$('miniMap');m.style.height=m.clientHeight>150?'120px':'280px';drawMiniMap();" style="float:right;background:none;border:1px solid rgba(255,255,255,.15);color:var(--t);font-size:10px;padding:1px 8px;border-radius:4px;cursor:pointer;">⤢ Agrandir</button></div>
+<canvas id="miniMap" style="width:100%;height:120px;border-radius:6px;background:#111;cursor:crosshair;display:block;margin-bottom:6px;transition:height .3s;"></canvas>
+<div class="fh" style="text-align:left;margin-bottom:6px;">Cliquez sur la carte pour positionner le modèle actif. <span style="color:#ff4466">●</span>=actif <span style="color:#ddcc88">●</span>=autres 📷=caméra</div>
 <div class="st">Matériau (modèle 1)</div>
 <div class="pr" id="matPr">
 <button class="pb ac" data-mat="original" onclick="setMat(this)">Original</button>
@@ -147,7 +147,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="cat-h"><span class="cat-ico">✏️</span><span class="cat-lbl">Textes & Logo</span><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="st">Titre</div>
-<div class="f"><label>Police</label><select id="fontT"><option value="'Cormorant Garamond',serif" selected>Cormorant Garamond</option><option value="'Playfair Display',serif">Playfair Display</option><option value="'Cinzel',serif">Cinzel</option><option value="'Montserrat',sans-serif">Montserrat</option><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Raleway',sans-serif">Raleway</option></select></div>
+<div class="f"><label>Police</label><select id="fontT"><option value="'Cormorant Garamond',serif" selected>Cormorant Garamond</option><option value="'Playfair Display',serif">Playfair Display</option><option value="'Cinzel',serif">Cinzel</option><option value="'Montserrat',sans-serif">Montserrat</option><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Raleway',sans-serif">Raleway</option><option value="custom">✏️ Police personnalisée…</option></select></div>
+<div class="f" id="customFontRow" style="display:none"><label>Nom de la police</label><input type="text" id="customFont" placeholder="Ex: Arial, Comic Sans MS…" style="width:100%;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--t);font-size:12px;"></div>
+<div class="fh" id="customFontHelp" style="display:none;text-align:left;margin-bottom:6px;">Tapez le nom exact d'une police installée sur votre PC. Elle sera visible uniquement sur les machines qui l'ont installée.</div>
 <div class="f"><label>Titre</label><input type="text" id="tT" value="Lycée Henri Loritz"></div>
 <div class="f"><label>Taille</label><div class="sr"><input type="range" id="tTsz" min="12" max="60" value="28"><span class="v" id="tTszV">28</span></div></div>
 <div class="f"><label>Sous-titre</label><input type="text" id="tS" value="Nancy — Établissement public"></div>
@@ -410,7 +412,7 @@ function getSlotCfg(i){
 window.getState=()=>({...S,slots:SLOTS});
 window.getConfig=()=>({
   title:$('tT').value,sub:$('tS').value,bl:$('tBL').value,br:$('tBR').value,live:$('tLV').value,
-  fontT:$('fontT').value,tTsz:+$('tTsz').value,tSsz:+$('tSsz').value,tBsz:+$('tBsz').value,
+  fontT:$('fontT').value==='custom'?("'"+($('customFont').value||'Arial')+"',sans-serif"):$('fontT').value,tTsz:+$('tTsz').value,tSsz:+$('tSsz').value,tBsz:+$('tBsz').value,
   accent:$('cA').value,bg:$('cB').value,liveC:$('cL').value,floorC:$('cF').value,tOp:+$('tOp').value/100,
   showFloor:$('togFloor').classList.contains('on'),reflectFloor:$('togReflect').classList.contains('on'),
   slots:[getSlotCfg(0),getSlotCfg(1),getSlotCfg(2)],
@@ -688,14 +690,13 @@ function U(){
 
   pvE.style.background=c.bg;
 
-  // Background rendering — custom image/video on 3D sphere, animated on scene.background
+  // Background rendering — custom image/video on 3D sphere
   pvE.style.backgroundImage='none';
   if(S._bgVidEl){S._bgVidEl.remove();S._bgVidEl=null;}
 
   if(S.bgURL&&!c.hdri){
     const mode=c.bgMode||'cover';
     const op=c.bgOpacity/100;
-    // Create bg sphere if needed
     if(!S._bgSphere){
       const geo=new THREE.SphereGeometry(80,32,32);
       const mat=new THREE.MeshBasicMaterial({side:THREE.BackSide,transparent:true});
@@ -705,11 +706,14 @@ function U(){
     S._bgSphere.visible=true;
     S._bgSphere.material.opacity=op;
     if(S.bgType==='image'){
-      if(!S._bgImgEl){S._bgImgEl=new Image();S._bgImgEl.src=S.bgURL;S._bgImgEl.onload=()=>{S._bgImgReady=true;U();};}
+      if(!S._bgImgEl){S._bgImgEl=new Image();S._bgImgEl.src=S.bgURL;S._bgImgEl.onload=()=>{S._bgImgReady=true;S._bgCacheKey='';U();};}
       if(!S._bgCanvas){S._bgCanvas=document.createElement('canvas');S._bgCanvas.width=1024;S._bgCanvas.height=1024;S._bgTex=new THREE.CanvasTexture(S._bgCanvas);}
-      if(S._bgImgReady&&S._bgImgEl.complete){
+      // Only redraw when settings change
+      const cacheKey=S.bgURL+mode+c.bg;
+      if(S._bgImgReady&&cacheKey!==S._bgCacheKey){
+        S._bgCacheKey=cacheKey;
         const cv=S._bgCanvas,ctx=cv.getContext('2d'),img=S._bgImgEl;
-        ctx.fillStyle=c.bg;ctx.fillRect(0,0,1024,1024);ctx.globalAlpha=1;
+        ctx.fillStyle=c.bg;ctx.fillRect(0,0,1024,1024);
         if(mode==='tile'){for(let y=0;y<1024;y+=img.height)for(let x=0;x<1024;x+=img.width)ctx.drawImage(img,x,y);}
         else if(mode==='contain'){const r=Math.min(1024/img.width,1024/img.height);const w=img.width*r,h=img.height*r;ctx.drawImage(img,(1024-w)/2,(1024-h)/2,w,h);}
         else{const r=Math.max(1024/img.width,1024/img.height);const w=img.width*r,h=img.height*r;ctx.drawImage(img,(1024-w)/2,(1024-h)/2,w,h);}
@@ -718,11 +722,13 @@ function U(){
       S._bgSphere.material.map=S._bgTex;S._bgSphere.material.needsUpdate=true;
       scene.background=null;
     }else if(S.bgType==='video'){
-      if(!S._bgVid2||S._bgVid2.src!==S.bgURL){
-        S._bgVid2=document.createElement('video');S._bgVid2.src=S.bgURL;S._bgVid2.loop=true;S._bgVid2.muted=true;S._bgVid2.play();
-        S._bgVidCanvas=document.createElement('canvas');S._bgVidCanvas.width=1024;S._bgVidCanvas.height=1024;
+      if(!S._bgVid2||S._bgVid2._srcUrl!==S.bgURL){
+        S._bgVid2=document.createElement('video');S._bgVid2.src=S.bgURL;S._bgVid2._srcUrl=S.bgURL;S._bgVid2.loop=true;S._bgVid2.muted=true;S._bgVid2.play();
+        S._bgVidCanvas=document.createElement('canvas');S._bgVidCanvas.width=512;S._bgVidCanvas.height=512;
         S._bgVidTex2=new THREE.CanvasTexture(S._bgVidCanvas);
+        S._bgVidMode=mode;
       }
+      S._bgVidMode=mode;
       S._bgSphere.material.map=S._bgVidTex2;S._bgSphere.material.needsUpdate=true;
       scene.background=null;
     }
@@ -935,6 +941,16 @@ mmC.addEventListener('click',e=>{
 // Call drawMiniMap at end of every U()
 const _origU=U;
 U=function(){_origU.apply(this,arguments);drawMiniMap();};
+
+// Custom font toggle
+$('fontT').addEventListener('change',function(){
+  const isCustom=this.value==='custom';
+  $('customFontRow').style.display=isCustom?'':'none';
+  $('customFontHelp').style.display=isCustom?'':'none';
+  if(isCustom)$('customFont').focus();
+  U();
+});
+$('customFont').addEventListener('input',U);
 
 document.querySelectorAll('#P input,#P select').forEach(el=>{el.addEventListener('input',U);el.addEventListener('change',U);});
 
@@ -1150,6 +1166,14 @@ function loadC_fromObj(c){
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
   ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
+  // Restore custom font if not a preset
+  if(c.fontT){
+    const opts=[...document.querySelectorAll('#fontT option')].map(o=>o.value);
+    if(!opts.includes(c.fontT)&&c.fontT!=='custom'){
+      $('fontT').value='custom';$('customFont').value=c.fontT.replace(/^'|',.*$/g,'');
+      $('customFontRow').style.display='';$('customFontHelp').style.display='';
+    }
+  }
   if(c.pulseColors&&c.pulseColors.length>=4){$('pc1').value=c.pulseColors[0];$('pc2').value=c.pulseColors[1];$('pc3').value=c.pulseColors[2];$('pc4').value=c.pulseColors[3];}
   U();
 }
@@ -1257,15 +1281,19 @@ function anim(){
     if(scfg.spin>0&&sl.group)sl.group.rotation.y+=(scfg.spin/100)*dt;
   }
   renderBgFrame();
-  // Video background → draw frame to canvas each tick
+  // Video background → draw frame throttled to ~24fps
   if(S._bgVid2&&S._bgVidCanvas&&S._bgVidTex2&&!S._bgVid2.paused){
-    const vc=S._bgVidCanvas,vctx=vc.getContext('2d'),vid=S._bgVid2;
-    const c2=window.getConfig(),mode=c2.bgMode||'cover',op=c2.bgOpacity/100;
-    vctx.fillStyle=c2.bg;vctx.fillRect(0,0,1024,1024);vctx.globalAlpha=op;
-    if(mode==='tile'){const tw=vid.videoWidth||256,th=vid.videoHeight||256;for(let y=0;y<1024;y+=th)for(let x=0;x<1024;x+=tw)vctx.drawImage(vid,x,y,tw,th);}
-    else if(mode==='contain'){const r=Math.min(1024/(vid.videoWidth||1),1024/(vid.videoHeight||1));const w=(vid.videoWidth||1)*r,h=(vid.videoHeight||1)*r;vctx.drawImage(vid,(1024-w)/2,(1024-h)/2,w,h);}
-    else{const r=Math.max(1024/(vid.videoWidth||1),1024/(vid.videoHeight||1));const w=(vid.videoWidth||1)*r,h=(vid.videoHeight||1)*r;vctx.drawImage(vid,(1024-w)/2,(1024-h)/2,w,h);}
-    vctx.globalAlpha=1;S._bgVidTex2.needsUpdate=true;
+    if(!S._bgVidLast||el-S._bgVidLast>0.04){
+      S._bgVidLast=el;
+      const vc=S._bgVidCanvas,vctx=vc.getContext('2d'),vid=S._bgVid2,mode=S._bgVidMode||'cover';
+      vctx.fillStyle='#0a0a0c';vctx.fillRect(0,0,512,512);
+      if(vid.videoWidth){
+        if(mode==='tile'){const tw=vid.videoWidth,th=vid.videoHeight;for(let y=0;y<512;y+=th*512/1024)for(let x=0;x<512;x+=tw*512/1024)vctx.drawImage(vid,x,y,tw*512/1024,th*512/1024);}
+        else if(mode==='contain'){const r=Math.min(512/vid.videoWidth,512/vid.videoHeight);const w=vid.videoWidth*r,h=vid.videoHeight*r;vctx.drawImage(vid,(512-w)/2,(512-h)/2,w,h);}
+        else{const r=Math.max(512/vid.videoWidth,512/vid.videoHeight);const w=vid.videoWidth*r,h=vid.videoHeight*r;vctx.drawImage(vid,(512-w)/2,(512-h)/2,w,h);}
+      }
+      S._bgVidTex2.needsUpdate=true;
+    }
   }
 
   if(bokehPass.enabled)bokehPass.uniforms['focus'].value=cam.position.distanceTo(mC);
