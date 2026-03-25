@@ -128,8 +128,8 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Position Z</label><div class="sr"><input type="range" id="sPosZ" min="-50" max="50" value="0"><span class="v" id="sPosZV">0</span></div></div>
 <div class="f"><label>Auto-rotation</label><div class="sr"><input type="range" id="sSpin" min="0" max="30" value="0"><span class="v" id="sSpinV">0</span></div></div>
 </div>
-<div class="st">Placement (vue du dessus) <button onclick="const m=$('miniMap');m.style.height=m.clientHeight>150?'120px':'280px';drawMiniMap();" style="float:right;background:none;border:1px solid rgba(255,255,255,.15);color:var(--t);font-size:10px;padding:1px 8px;border-radius:4px;cursor:pointer;">⤢ Agrandir</button></div>
-<canvas id="miniMap" style="width:100%;height:120px;border-radius:6px;background:#111;cursor:crosshair;display:block;margin-bottom:6px;transition:height .3s;"></canvas>
+<div class="st">Placement (vue du dessus) <button onclick="const m=$('miniMap');const big=m.clientHeight>150;m.style.height=big?'120px':'260px';this.textContent=big?'⤢ Agrandir':'⤡ Réduire';setTimeout(drawMiniMap,50);" style="float:right;background:none;border:1px solid rgba(255,255,255,.15);color:var(--t);font-size:10px;padding:1px 8px;border-radius:4px;cursor:pointer;">⤢ Agrandir</button></div>
+<canvas id="miniMap" style="width:100%;height:120px;border-radius:6px;background:#0e0e11;cursor:crosshair;display:block;margin-bottom:6px;transition:height .3s;"></canvas>
 <div class="fh" style="text-align:left;margin-bottom:6px;">Cliquez sur la carte pour positionner le modèle actif. <span style="color:#ff4466">●</span>=actif <span style="color:#ddcc88">●</span>=autres 📷=caméra</div>
 <div class="st">Matériau (modèle 1)</div>
 <div class="pr" id="matPr">
@@ -902,43 +902,47 @@ function drawMiniMap(){
   const dpr=window.devicePixelRatio||1;
   const w=mmC.clientWidth,h=mmC.clientHeight;
   mmC.width=w*dpr;mmC.height=h*dpr;
-  mmCtx.scale(dpr,dpr);
+  mmCtx.setTransform(dpr,0,0,dpr,0,0);
   mmCtx.clearRect(0,0,w,h);
+  const cx=w/2,cy=h/2;
+  // Uniform scale: 10 units = fit in smallest dimension with padding
+  const span=12;// scene units visible (-6 to +6)
+  const scale=Math.min(w,h)*0.85/span;
   // Grid
-  const cx=w/2,cy=h/2,scale=10;// 1 unit = 10px
   mmCtx.strokeStyle='rgba(255,255,255,0.06)';mmCtx.lineWidth=1;
-  for(let gx=-5;gx<=5;gx++){mmCtx.beginPath();mmCtx.moveTo(cx+gx*scale,0);mmCtx.lineTo(cx+gx*scale,h);mmCtx.stroke();}
-  for(let gy=-5;gy<=5;gy++){mmCtx.beginPath();mmCtx.moveTo(0,cy+gy*scale);mmCtx.lineTo(w,cy+gy*scale);mmCtx.stroke();}
+  for(let g=-6;g<=6;g++){
+    mmCtx.beginPath();mmCtx.moveTo(cx+g*scale,cy-6*scale);mmCtx.lineTo(cx+g*scale,cy+6*scale);mmCtx.stroke();
+    mmCtx.beginPath();mmCtx.moveTo(cx-6*scale,cy+g*scale);mmCtx.lineTo(cx+6*scale,cy+g*scale);mmCtx.stroke();
+  }
   // Floor circle
-  mmCtx.beginPath();mmCtx.arc(cx,cy,5*scale,0,Math.PI*2);mmCtx.strokeStyle='rgba(255,255,255,0.1)';mmCtx.stroke();
-  // Draw slots
+  mmCtx.beginPath();mmCtx.arc(cx,cy,5*scale,0,Math.PI*2);mmCtx.strokeStyle='rgba(255,255,255,0.08)';mmCtx.stroke();
+  // Slots
   for(let i=0;i<3;i++){
     const sl=SLOTS[i];if(!sl.buf)continue;
     const cfg=getSlotCfg(i);
     const sx=cx+cfg.posX*scale,sy=cy+cfg.posZ*scale;
     const isActive=i===activeSlot;
-    // Glow for active
-    if(isActive){mmCtx.fillStyle='rgba(255,68,102,0.15)';mmCtx.beginPath();mmCtx.arc(sx,sy,12,0,Math.PI*2);mmCtx.fill();}
+    if(isActive){mmCtx.fillStyle='rgba(255,68,102,0.15)';mmCtx.beginPath();mmCtx.arc(sx,sy,14,0,Math.PI*2);mmCtx.fill();}
     mmCtx.fillStyle=isActive?'#ff4466':i===0?'#ddcc88':'#88aacc';
-    mmCtx.beginPath();mmCtx.arc(sx,sy,isActive?5:4,0,Math.PI*2);mmCtx.fill();
-    // Label
-    mmCtx.fillStyle='rgba(255,255,255,0.8)';mmCtx.font='bold 9px sans-serif';mmCtx.textAlign='center';
-    mmCtx.fillText((i+1)+'',sx,sy-9);
+    mmCtx.beginPath();mmCtx.arc(sx,sy,isActive?6:4,0,Math.PI*2);mmCtx.fill();
+    mmCtx.fillStyle='rgba(255,255,255,0.8)';mmCtx.font='bold 10px sans-serif';mmCtx.textAlign='center';
+    mmCtx.fillText((i+1)+'',sx,sy-11);
   }
-  // Camera indicator
-  mmCtx.fillStyle='#44ff88';mmCtx.font='10px sans-serif';mmCtx.textAlign='center';
-  const camX=cx+mC.x*scale,camZ=cy+mC.z*scale;
-  mmCtx.fillText('📷',camX,camZ-12);
+  // Camera
+  mmCtx.fillStyle='#44ff88';mmCtx.font='12px sans-serif';mmCtx.textAlign='center';
+  mmCtx.fillText('📷',cx+mC.x*scale,cy+mC.z*scale-14);
+  // Store scale for click handler
+  mmC._scale=scale;
 }
 mmC.addEventListener('click',e=>{
   const rect=mmC.getBoundingClientRect();
-  const x=(e.clientX-rect.left-rect.width/2)/10;
-  const z=(e.clientY-rect.top-rect.height/2)/10;
+  const sc=mmC._scale||10;
+  const x=(e.clientX-rect.left-rect.width/2)/sc;
+  const z=(e.clientY-rect.top-rect.height/2)/sc;
   $('sPosX').value=Math.round(x*10);
   $('sPosZ').value=Math.round(z*10);
   U();
 });
-// Call drawMiniMap at end of every U()
 const _origU=U;
 U=function(){_origU.apply(this,arguments);drawMiniMap();};
 
