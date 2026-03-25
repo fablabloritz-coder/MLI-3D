@@ -128,9 +128,20 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Position Z</label><div class="sr"><input type="range" id="sPosZ" min="-50" max="50" value="0"><span class="v" id="sPosZV">0</span></div></div>
 <div class="f"><label>Auto-rotation</label><div class="sr"><input type="range" id="sSpin" min="0" max="30" value="0"><span class="v" id="sSpinV">0</span></div></div>
 </div>
-<div class="st">Placement (vue du dessus) <button onclick="const m=$('miniMap');const big=m.clientHeight>150;m.style.height=big?'120px':'260px';this.textContent=big?'⤢ Agrandir':'⤡ Réduire';setTimeout(drawMiniMap,50);" style="float:right;background:none;border:1px solid rgba(255,255,255,.15);color:var(--t);font-size:10px;padding:1px 8px;border-radius:4px;cursor:pointer;">⤢ Agrandir</button></div>
-<canvas id="miniMap" style="width:100%;height:120px;border-radius:6px;background:#0e0e11;cursor:crosshair;display:block;margin-bottom:6px;transition:height .3s;"></canvas>
+<div class="st">Placement (vue du dessus) <button id="mmPopBtn" onclick="openMiniMapPop()" style="float:right;background:none;border:1px solid rgba(255,255,255,.15);color:var(--t);font-size:10px;padding:1px 8px;border-radius:4px;cursor:pointer;">⤢ Ouvrir en grand</button></div>
+<canvas id="miniMap" style="width:100%;height:120px;border-radius:6px;background:#0e0e11;cursor:crosshair;display:block;margin-bottom:6px;"></canvas>
 <div class="fh" style="text-align:left;margin-bottom:6px;">Cliquez sur la carte pour positionner le modèle actif. <span style="color:#ff4466">●</span>=actif <span style="color:#ddcc88">●</span>=autres 📷=caméra</div>
+<!-- Mini-map popup modal -->
+<div id="mmModal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+<div style="background:#151518;border-radius:12px;padding:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);position:relative;max-width:90vmin;max-height:90vmin;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+<span style="color:var(--t);font-size:12px;text-transform:uppercase;letter-spacing:.1em;">Placement — Vue du dessus</span>
+<button onclick="closeMiniMapPop()" style="background:none;border:none;color:var(--t);font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
+</div>
+<canvas id="miniMapBig" style="width:70vmin;height:70vmin;border-radius:8px;background:#0e0e11;cursor:crosshair;display:block;"></canvas>
+<div style="color:rgba(255,255,255,.5);font-size:10px;margin-top:8px;text-align:center;">Cliquez pour positionner le modèle actif · <span style="color:#ff4466">●</span> actif · <span style="color:#ddcc88">●</span> autres · 📷 caméra</div>
+</div>
+</div>
 <div class="st">Matériau (modèle 1)</div>
 <div class="pr" id="matPr">
 <button class="pb ac" data-mat="original" onclick="setMat(this)">Original</button>
@@ -896,55 +907,71 @@ function renderBgFrame(){
 }
 
 // ═══ MINI-MAP (top-down view) ═══
-const mmC=$('miniMap');
-const mmCtx=mmC.getContext('2d');
-function drawMiniMap(){
+function drawMM(cv){
+  const ctx=cv.getContext('2d');
   const dpr=window.devicePixelRatio||1;
-  const w=mmC.clientWidth,h=mmC.clientHeight;
-  mmC.width=w*dpr;mmC.height=h*dpr;
-  mmCtx.setTransform(dpr,0,0,dpr,0,0);
-  mmCtx.clearRect(0,0,w,h);
+  const w=cv.clientWidth,h=cv.clientHeight;
+  cv.width=w*dpr;cv.height=h*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
   const cx=w/2,cy=h/2;
-  // Uniform scale: 10 units = fit in smallest dimension with padding
-  const span=12;// scene units visible (-6 to +6)
-  const scale=Math.min(w,h)*0.85/span;
+  const side=Math.min(w,h);
+  const scale=side*0.07;// 1 unit in scene
   // Grid
-  mmCtx.strokeStyle='rgba(255,255,255,0.06)';mmCtx.lineWidth=1;
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
   for(let g=-6;g<=6;g++){
-    mmCtx.beginPath();mmCtx.moveTo(cx+g*scale,cy-6*scale);mmCtx.lineTo(cx+g*scale,cy+6*scale);mmCtx.stroke();
-    mmCtx.beginPath();mmCtx.moveTo(cx-6*scale,cy+g*scale);mmCtx.lineTo(cx+6*scale,cy+g*scale);mmCtx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+g*scale,cy-6*scale);ctx.lineTo(cx+g*scale,cy+6*scale);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx-6*scale,cy+g*scale);ctx.lineTo(cx+6*scale,cy+g*scale);ctx.stroke();
   }
+  // Origin cross
+  ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-4,cy);ctx.lineTo(cx+4,cy);ctx.moveTo(cx,cy-4);ctx.lineTo(cx,cy+4);ctx.stroke();
   // Floor circle
-  mmCtx.beginPath();mmCtx.arc(cx,cy,5*scale,0,Math.PI*2);mmCtx.strokeStyle='rgba(255,255,255,0.08)';mmCtx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,5*scale,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.stroke();
   // Slots
   for(let i=0;i<3;i++){
     const sl=SLOTS[i];if(!sl.buf)continue;
     const cfg=getSlotCfg(i);
     const sx=cx+cfg.posX*scale,sy=cy+cfg.posZ*scale;
     const isActive=i===activeSlot;
-    if(isActive){mmCtx.fillStyle='rgba(255,68,102,0.15)';mmCtx.beginPath();mmCtx.arc(sx,sy,14,0,Math.PI*2);mmCtx.fill();}
-    mmCtx.fillStyle=isActive?'#ff4466':i===0?'#ddcc88':'#88aacc';
-    mmCtx.beginPath();mmCtx.arc(sx,sy,isActive?6:4,0,Math.PI*2);mmCtx.fill();
-    mmCtx.fillStyle='rgba(255,255,255,0.8)';mmCtx.font='bold 10px sans-serif';mmCtx.textAlign='center';
-    mmCtx.fillText((i+1)+'',sx,sy-11);
+    if(isActive){ctx.fillStyle='rgba(255,68,102,0.12)';ctx.beginPath();ctx.arc(sx,sy,16,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle=isActive?'#ff4466':i===0?'#ddcc88':'#88aacc';
+    ctx.beginPath();ctx.arc(sx,sy,isActive?6:4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font=`bold ${side>300?'12':'9'}px sans-serif`;ctx.textAlign='center';
+    ctx.fillText((i+1)+'',sx,sy-(side>300?14:10));
   }
   // Camera
-  mmCtx.fillStyle='#44ff88';mmCtx.font='12px sans-serif';mmCtx.textAlign='center';
-  mmCtx.fillText('📷',cx+mC.x*scale,cy+mC.z*scale-14);
-  // Store scale for click handler
-  mmC._scale=scale;
+  ctx.fillStyle='#44ff88';ctx.font=`${side>300?'14':'10'}px sans-serif`;ctx.textAlign='center';
+  ctx.fillText('📷',cx+mC.x*scale,cy+mC.z*scale-(side>300?16:12));
+  cv._mmScale=scale;
 }
-mmC.addEventListener('click',e=>{
-  const rect=mmC.getBoundingClientRect();
-  const sc=mmC._scale||10;
+function mmClick(e,cv){
+  const rect=cv.getBoundingClientRect();
+  const sc=cv._mmScale||10;
   const x=(e.clientX-rect.left-rect.width/2)/sc;
   const z=(e.clientY-rect.top-rect.height/2)/sc;
   $('sPosX').value=Math.round(x*10);
   $('sPosZ').value=Math.round(z*10);
   U();
-});
+}
+$('miniMap').addEventListener('click',e=>mmClick(e,$('miniMap')));
+
+let mmPopOpen=false;
+function openMiniMapPop(){
+  mmPopOpen=true;
+  $('mmModal').style.display='flex';
+  const big=$('miniMapBig');
+  big.addEventListener('click',e=>mmClick(e,big),{once:false});
+  drawMM(big);
+}
+function closeMiniMapPop(){
+  mmPopOpen=false;
+  $('mmModal').style.display='none';
+}
+$('mmModal').addEventListener('click',e=>{if(e.target===$('mmModal'))closeMiniMapPop();});
+
 const _origU=U;
-U=function(){_origU.apply(this,arguments);drawMiniMap();};
+U=function(){_origU.apply(this,arguments);drawMM($('miniMap'));if(mmPopOpen)drawMM($('miniMapBig'));};
 
 // Custom font toggle
 $('fontT').addEventListener('change',function(){
