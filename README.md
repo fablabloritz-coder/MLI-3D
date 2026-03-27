@@ -74,6 +74,10 @@ git clone https://github.com/fablabloritz-coder/MLI-3D.git
 
 Puis ouvrir `index.html` dans **Google Chrome** (recommandé).
 
+Ou pour une utilisation en ligne sans installation/téléchargement
+```
+https://fablabloritz-coder.github.io/MLI-3D/
+```
 ### Workflow OBS
 
 1. Ouvrez `index.html` dans Chrome
