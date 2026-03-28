@@ -326,6 +326,35 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="fh" style="text-align:left;">Simule une foule de fans et paparazzi autour de la scène avec des flashes photo aléatoires.</div>
 </div></div>
 
+<!-- 7c. COMPTE À REBOURS -->
+<div class="cat closed" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">⏳</span><span class="cat-lbl">Compte à rebours</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="tr"><span>Activer le compte à rebours</span><button class="tg" id="togCountdown" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Durée (minutes)</label><div class="sr"><input type="range" id="cdMin" min="1" max="30" value="5"><span class="v" id="cdMinV">5</span></div></div>
+<div class="f"><label>Texte avant</label><input type="text" id="cdText" value="Le stream commence dans"></div>
+<div class="f"><label>Taille</label><div class="sr"><input type="range" id="cdSize" min="14" max="60" value="28"><span class="v" id="cdSizeV">28</span></div></div>
+<div class="fh" style="text-align:left;">Le timer apparaît dans la popup OBS et décompte en temps réel. À 0, il disparaît automatiquement.</div>
+</div></div>
+
+<!-- 7d. FILTRES COULEUR -->
+<div class="cat closed" onclick="this.classList.toggle('closed')">
+<div class="cat-h"><span class="cat-ico">🎨</span><span class="cat-lbl">Filtres couleur</span><span class="cat-arr">▼</span></div>
+<div class="cat-body" onclick="event.stopPropagation()">
+<div class="f"><label>Filtre</label><select id="colorFilter">
+<option value="none" selected>Aucun</option>
+<option value="sepia">Sépia</option>
+<option value="bw">Noir & blanc</option>
+<option value="night">Vision nocturne</option>
+<option value="warm">Chaud</option>
+<option value="cool">Froid</option>
+<option value="vintage">Vintage</option>
+<option value="custom">Teinte personnalisée</option>
+</select></div>
+<div class="f"><label>Intensité du filtre</label><div class="sr"><input type="range" id="filterInt" min="0" max="100" value="70"><span class="v" id="filterIntV">70%</span></div></div>
+<div class="cr" id="filterColorRow" style="display:none"><input type="color" id="filterColor" value="#ff8844"><label>Teinte personnalisée</label></div>
+</div></div>
+
 <!-- 8. WATERMARK -->
 <div class="cat closed" onclick="this.classList.toggle('closed')">
 <div class="cat-h"><span class="cat-ico">💧</span><span class="cat-lbl">Filigrane / Watermark</span><span class="cat-arr">▼</span></div>
@@ -485,6 +514,8 @@ window.getConfig=()=>({
   bgAnim:$('bgAnim').value,bgOpacity:+$('bgOpacity').value,bgMode:$('bgMode').value,bgScale:+$('bgScale').value,bgGapH:+$('bgGapH').value,bgGapV:+$('bgGapV').value,bgBlur:+$('bgBlur').value,
   crowd:$('togCrowd').classList.contains('on'),crowdRand:$('togCrowdRand').classList.contains('on'),crowdDensity:+$('crowdDensity').value,crowdScale:+$('crowdScale').value,crowdGap:+$('crowdGap').value,crowdHeight:+$('crowdHeight').value,crowdDist:+$('crowdDist').value,
   flash:$('togFlash').classList.contains('on'),flashFreq:+$('flashFreq').value,flashPow:+$('flashPow').value/10,
+  countdown:$('togCountdown').classList.contains('on'),cdMin:+$('cdMin').value,cdText:$('cdText').value,cdSize:+$('cdSize').value,
+  colorFilter:$('colorFilter').value,filterInt:+$('filterInt').value,filterColor:$('filterColor').value,
 });
 
 // ═══ THREE.JS ═══
@@ -913,6 +944,13 @@ function U(){
   if(!c.hdri)R.toneMappingExposure=c.gExp;
 
   bloomPass.enabled=c.bloom;bloomPass.strength=c.bloomI;
+  // Color filter via CSS
+  const fi=c.filterInt/100;
+  const FILTERS={none:'',sepia:`sepia(${fi})`,bw:`grayscale(${fi})`,night:`hue-rotate(120deg) saturate(${0.5+fi}) brightness(${0.6+fi*0.3})`,warm:`sepia(${fi*0.4}) saturate(${1+fi*0.5}) brightness(${1+fi*0.1})`,cool:`hue-rotate(200deg) saturate(${0.7+fi*0.3}) brightness(${0.9+fi*0.1})`,vintage:`sepia(${fi*0.5}) contrast(${0.9+fi*0.2}) brightness(${0.9+fi*0.1}) saturate(${0.7+fi*0.3})`,custom:''};
+  let flt=FILTERS[c.colorFilter]||'';
+  if(c.colorFilter==='custom'){const[cr,cg,cb]=h2r(c.filterColor);flt=`sepia(${fi}) saturate(2) hue-rotate(${Math.round(Math.atan2(cb-128,cr-128)*180/Math.PI)}deg)`;}
+  R.domElement.style.filter=flt;
+  $('filterColorRow').style.display=c.colorFilter==='custom'?'':'none';
 
   // DoF — fix brightness: boost exposure to compensate
   bokehPass.enabled=c.dof;
@@ -967,7 +1005,7 @@ function U(){
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('fogDV').textContent=Math.round(c.fogD*1000);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
   $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';$('vizScaleV').textContent=c.vizScale+'%';
-  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';$('bgScaleV').textContent=c.bgScale+'%';$('bgGapHV').textContent=c.bgGapH+'px';$('bgGapVV').textContent=c.bgGapV+'px';$('bgBlurV').textContent=c.bgBlur;$('crowdDensityV').textContent=c.crowdDensity;$('crowdScaleV').textContent=c.crowdScale+'%';$('crowdGapV').textContent=c.crowdGap;$('crowdHeightV').textContent=c.crowdHeight;$('crowdDistV').textContent=c.crowdDist;$('flashFreqV').textContent=c.flashFreq;$('flashPowV').textContent=c.flashPow.toFixed(1);
+  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';$('bgScaleV').textContent=c.bgScale+'%';$('bgGapHV').textContent=c.bgGapH+'px';$('bgGapVV').textContent=c.bgGapV+'px';$('bgBlurV').textContent=c.bgBlur;$('crowdDensityV').textContent=c.crowdDensity;$('crowdScaleV').textContent=c.crowdScale+'%';$('crowdGapV').textContent=c.crowdGap;$('crowdHeightV').textContent=c.crowdHeight;$('crowdDistV').textContent=c.crowdDist;$('flashFreqV').textContent=c.flashFreq;$('flashPowV').textContent=c.flashPow.toFixed(1);$('cdMinV').textContent=c.cdMin;$('cdSizeV').textContent=c.cdSize;$('filterIntV').textContent=c.filterInt+'%';
 
   // Watermark
   const wm=$('wmOv');
@@ -1560,7 +1598,7 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',flashPow:'flashPow',dustSize:'dustSize'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',flashPow:'flashPow',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',dustSize:'dustSize'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
   if(c.slots&&c.slots[0]){
@@ -1579,7 +1617,7 @@ function loadC_fromObj(c){
   if(c.l2I!=null)$('l2I').value=Math.round(c.l2I*10);
   if(c.cLookY!=null)$('cLookY').value=Math.round(c.cLookY*10);
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
-  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash','countdown:togCountdown'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
   // Restore custom font if not a preset
   if(c.fontT){
@@ -1806,6 +1844,7 @@ ${c.lines?'<div class="ln lt"></div><div class="ln lb"></div>':''}
 <div id="o"><div class="tp">${tl}${tr}</div><div class="bt">${bl}${br}</div></div>
 ${c.wm&&c.wmTxt?`<div style="position:fixed;z-index:9;pointer-events:none;font-family:'Raleway',sans-serif;font-weight:200;letter-spacing:.15em;text-transform:uppercase;font-size:${c.wmSz}px;color:rgba(${ar},${ag},${ab},${c.wmOp/100});${c.wmPos==='center'?'top:50%;left:50%;transform:translate(-50%,-50%)':c.wmPos==='tl'?'top:8%;left:4vw':c.wmPos==='tr'?'top:8%;right:4vw':c.wmPos==='bl'?'bottom:8%;left:4vw':'bottom:8%;right:4vw'}">${c.wmTxt}</div>`:''}
 ${c.audioViz?`<canvas id="avz" style="position:fixed;bottom:${c.cine?c.cineH+3:8}vh;left:50%;transform:translateX(-50%);width:${c.vizScale*4}px;height:${c.vizScale}px;z-index:7;pointer-events:none;"></canvas>`:''}
+${c.countdown?`<div id="cdWrap" style="position:fixed;bottom:${c.cine?c.cineH+8:15}vh;left:50%;transform:translateX(-50%);z-index:20;text-align:center;pointer-events:none;font-family:${c.fontT};"><div style="font-size:${Math.round(c.cdSize*0.6)}px;color:rgba(${ar},${ag},${ab},${(o*0.6).toFixed(2)});letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;">${c.cdText}</div><div id="cdTimer" style="font-size:${c.cdSize}px;color:rgba(${ar},${ag},${ab},${o.toFixed(2)});letter-spacing:.2em;font-variant-numeric:tabular-nums;"></div></div>`:''}
 ${c.showTrackName&&S.audioName?`<div class="tn">${S.audioName.replace(/\.[^.]+$/,'')}</div>`:''}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>
@@ -2052,6 +2091,20 @@ function drawBg(){requestAnimationFrame(drawBg);
   ${c.bgAnim==='stars'?`bgCtx.fillStyle='rgba(0,0,0,0.08)';bgCtx.fillRect(0,0,512,512);strs.forEach(function(s){s.b+=.02*(Math.random()-.5);s.b=Math.max(.1,Math.min(1,s.b));bgCtx.fillStyle='rgba(220,210,190,'+s.b*0.4+')';bgCtx.beginPath();bgCtx.arc(s.x*512,s.y*512,s.s,0,Math.PI*2);bgCtx.fill();});shT++;if(shT>180&&Math.random()>.97){shts.push({x:Math.random()*512,y:Math.random()*150,dx:2+Math.random()*3,dy:.7+Math.random()*1.5,l:20,life:1});shT=0;}shts.forEach(function(s){s.x+=s.dx;s.y+=s.dy;s.life-=.015;if(s.life>0){bgCtx.strokeStyle='rgba(220,200,170,'+s.life*.5+')';bgCtx.lineWidth=1;bgCtx.beginPath();bgCtx.moveTo(s.x,s.y);bgCtx.lineTo(s.x-s.dx*s.l*.3,s.y-s.dy*s.l*.3);bgCtx.stroke();}});for(var i=shts.length-1;i>=0;i--)if(shts[i].life<=0)shts.splice(i,1);`:''}
   bgTex.needsUpdate=true;
 }drawBg();`:''}
+// Countdown timer
+${c.countdown?`
+var cdTotal=${c.cdMin}*60,cdStart=Date.now();
+var cdEl=document.getElementById('cdTimer'),cdWrap=document.getElementById('cdWrap');
+function updCD(){if(!cdEl)return;var elapsed=Math.floor((Date.now()-cdStart)/1000);var remain=Math.max(0,cdTotal-elapsed);
+var m=Math.floor(remain/60),s=remain%60;cdEl.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+if(remain<=0){cdWrap.style.transition='opacity 2s';cdWrap.style.opacity='0';setTimeout(function(){cdWrap.style.display='none';},2500);return;}
+requestAnimationFrame(updCD);}updCD();`:''}
+// Color filter
+${c.colorFilter!=='none'?`
+var fi=${c.filterInt}/100;
+var FMAP={sepia:'sepia('+fi+')',bw:'grayscale('+fi+')',night:'hue-rotate(120deg) saturate('+(0.5+fi)+') brightness('+(0.6+fi*0.3)+')',warm:'sepia('+fi*0.4+') saturate('+(1+fi*0.5)+') brightness('+(1+fi*0.1)+')',cool:'hue-rotate(200deg) saturate('+(0.7+fi*0.3)+') brightness('+(0.9+fi*0.1)+')',vintage:'sepia('+fi*0.5+') contrast('+(0.9+fi*0.2)+') brightness('+(0.9+fi*0.1)+') saturate('+(0.7+fi*0.3)+')'};
+${c.colorFilter==='custom'?`R.domElement.style.filter='sepia('+fi+') saturate(2) hue-rotate(${Math.round(Math.atan2(parseInt(c.filterColor.slice(5,7),16)-128,parseInt(c.filterColor.slice(1,3),16)-128)*180/Math.PI)}deg)';`:`R.domElement.style.filter=FMAP['${c.colorFilter}']||'';`}
+`:''}
 // Audio playback — init on first user click to fix autoplay policy
 ${S.audioURL?`
 var audio=new Audio();audio.src='${S.audioURL}';audio.loop=${c.audioLoop};audio.volume=${c.audioVol/100};audio.preload='auto';
