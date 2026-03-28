@@ -1598,28 +1598,41 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',flashPow:'flashPow',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',dustSize:'dustSize'};
+  // Direct map: config key → element ID (only for values stored AS-IS, no division)
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
+  // Values stored divided — must multiply back for slider
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
+  if(c.gExp!=null)$('gExp').value=Math.round(c.gExp*10);
+  if(c.keyI!=null)$('kI').value=Math.round(c.keyI*10);
+  if(c.kDist!=null)$('kDist').value=c.kDist;
+  if(c.rimI!=null)$('rI').value=Math.round(c.rimI*10);
+  if(c.ambI!=null)$('aI').value=Math.round(c.ambI*10);
+  if(c.l2I!=null)$('l2I').value=Math.round(c.l2I*10);
+  if(c.cLookY!=null)$('cLookY').value=Math.round(c.cLookY*10);
+  if(c.bloomI!=null)$('bloomI').value=Math.round(c.bloomI*10);
+  if(c.dofAp!=null)$('dofAp').value=Math.round(c.dofAp*10);
+  if(c.hdriInt!=null)$('hdriInt').value=Math.round(c.hdriInt*10);
+  if(c.animDur!=null)$('animDur').value=Math.round(c.animDur*10);
+  if(c.cutDur!=null)$('cutDur').value=Math.round(c.cutDur*10);
+  if(c.fogD!=null)$('fogD').value=Math.round(c.fogD*1000);
+  if(c.pulseBright!=null)$('pulseBright').value=Math.round(c.pulseBright*10);
+  if(c.pulseDecay!=null)$('pulseDecay').value=Math.round(c.pulseDecay*100);
+  if(c.flashPow!=null)$('flashPow').value=Math.round(c.flashPow*10);
+  if(c.dustSize!=null)$('dustSize').value=Math.round(c.dustSize*100);
+  // Slots
   if(c.slots&&c.slots[0]){
     $('sScale').value=Math.round((c.slots[0].scale||1)*100);$('sRot').value=c.slots[0].rot||0;
     $('sPosX').value=Math.round((c.slots[0].posX||0)*10);$('sPosZ').value=Math.round((c.slots[0].posZ||0)*10);$('sPosY').value=Math.round((c.slots[0].posY||0)*10);
     $('sSpin').value=c.slots[0].spin||0;
     for(let si=0;si<3;si++)if(c.slots[si])SLOTS[si]._cfg=c.slots[si];
   }
-  if(c.gExp!=null)$('gExp').value=Math.round(c.gExp*10);
-  if(c.pulseBright!=null)$('pulseBright').value=Math.round(c.pulseBright*10);
-  if(c.fogD!=null)$('fogD').value=Math.round(c.fogD*1000);
-  if(c.flashPow!=null)$('flashPow').value=Math.round(c.flashPow*10);
-  if(c.pulseDecay!=null)$('pulseDecay').value=Math.round(c.pulseDecay*100);
-  if(c.keyI!=null)$('kI').value=Math.round(c.keyI*10);if(c.kDist!=null)$('kDist').value=c.kDist;
-  if(c.rimI!=null)$('rI').value=Math.round(c.rimI*10);if(c.ambI!=null)$('aI').value=Math.round(c.ambI*10);
-  if(c.l2I!=null)$('l2I').value=Math.round(c.l2I*10);
-  if(c.cLookY!=null)$('cLookY').value=Math.round(c.cLookY*10);
+  // Toggles
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
   ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash','countdown:togCountdown'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  // Material
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
-  // Restore custom font if not a preset
+  // Custom font
   if(c.fontT){
     const opts=[...document.querySelectorAll('#fontT option')].map(o=>o.value);
     if(!opts.includes(c.fontT)&&c.fontT!=='custom'){
@@ -1630,6 +1643,7 @@ function loadC_fromObj(c){
       if(!systemFonts.length)loadSystemFonts();
     }
   }
+  // Pulse colors
   if(c.pulseColors&&c.pulseColors.length>=4){$('pc1').value=c.pulseColors[0];$('pc2').value=c.pulseColors[1];$('pc3').value=c.pulseColors[2];$('pc4').value=c.pulseColors[3];}
   U();
 }
