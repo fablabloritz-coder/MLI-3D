@@ -126,7 +126,10 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Orientation (°)</label><div class="sr"><input type="range" id="sRot" min="0" max="360" value="0"><span class="v" id="sRotV">0°</span></div></div>
 <div class="f"><label>Position X</label><div class="sr"><input type="range" id="sPosX" min="-50" max="50" value="0"><span class="v" id="sPosXV">0</span></div></div>
 <div class="f"><label>Position Z</label><div class="sr"><input type="range" id="sPosZ" min="-50" max="50" value="0"><span class="v" id="sPosZV">0</span></div></div>
+<div class="f"><label>Hauteur (Y)</label><div class="sr"><input type="range" id="sPosY" min="-20" max="30" value="0"><span class="v" id="sPosYV">0</span></div></div>
 <div class="f"><label>Auto-rotation</label><div class="sr"><input type="range" id="sSpin" min="0" max="30" value="0"><span class="v" id="sSpinV">0</span></div></div>
+<div class="f" id="animSelRow" style="display:none"><label>Animation</label><select id="animSel" onchange="switchAnim(+this.value)"><option value="-1">Aucune</option></select></div>
+<button onclick="recenterSlot()" style="width:100%;margin-top:4px;padding:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--t);font-size:11px;cursor:pointer;">⊕ Recentrer et mettre à plat</button>
 </div>
 <div class="st">Placement (vue du dessus) <button id="mmPopBtn" onclick="openMiniMapPop()" style="float:right;background:none;border:1px solid rgba(255,255,255,.15);color:var(--t);font-size:10px;padding:1px 8px;border-radius:4px;cursor:pointer;">⤢ Ouvrir en grand</button></div>
 <canvas id="miniMap" style="width:100%;height:120px;border-radius:6px;background:#0e0e11;cursor:crosshair;display:block;margin-bottom:6px;"></canvas>
@@ -441,7 +444,7 @@ const S={get modelBuf(){return SLOTS[0].buf;},set modelBuf(v){SLOTS[0].buf=v;},
 
 // Per-slot config from UI
 function getSlotCfg(i){
-  if(i===activeSlot)return{scale:+$('sScale').value/100,rot:+$('sRot').value,posX:+$('sPosX').value/10,posZ:+$('sPosZ').value/10,spin:+$('sSpin').value};
+  if(i===activeSlot)return{scale:+$('sScale').value/100,rot:+$('sRot').value,posX:+$('sPosX').value/10,posZ:+$('sPosZ').value/10,posY:+$('sPosY').value/10,spin:+$('sSpin').value};
   return SLOTS[i]._cfg||{scale:1,rot:0,posX:0,posZ:0,spin:0};
 }
 
@@ -627,9 +630,9 @@ const stlLoader=new THREE.STLLoader();
 
 function loadModelSlot(slotIdx,buf,type){
   const sl=SLOTS[slotIdx],gr=sl.group;
-  // Clear old model and _baseScale
-  while(gr.children.length){const ch=gr.children[0];if(ch.userData)delete ch.userData._baseScale;gr.remove(ch);}
-  sl.origMats=[];sl.mixer=null;
+  // Clear old model
+  while(gr.children.length){const ch=gr.children[0];if(ch.userData){delete ch.userData._baseScale;delete ch.userData._baseY;}gr.remove(ch);}
+  sl.origMats=[];sl.mixer=null;sl.clips=[];sl.activeClip=-1;
 
   if(type==='stl'){
     const geo=stlLoader.parse(buf);
@@ -657,8 +660,11 @@ function loadModelSlot(slotIdx,buf,type){
     updateSceneBounds();
     if(g.animations&&g.animations.length>0){
       sl.mixer=new THREE.AnimationMixer(m);
-      g.animations.forEach(clip=>sl.mixer.clipAction(clip).play());
-    }
+      sl.clips=g.animations;
+      sl.activeClip=0;
+      sl.mixer.clipAction(g.animations[0]).play();
+    }else{sl.clips=[];sl.activeClip=-1;}
+    if(slotIdx===activeSlot)updateAnimSelector(slotIdx);
     if(slotIdx===0)applyMat(S.curMat);
   });
 }
@@ -874,11 +880,16 @@ function U(){
     if(gr.children[0]){
       const root=gr.children[0];
       if(root.userData._baseScale===undefined)root.userData._baseScale=root.scale.x;
+      if(root.userData._baseY===undefined)root.userData._baseY=root.position.y;
       root.scale.setScalar(root.userData._baseScale*scfg.scale);
+      // Scale from bottom: recalc bounding box and pin to floor
+      const box=new THREE.Box3().setFromObject(root);
+      root.position.y=root.userData._baseY-box.min.y;
     }
     gr.rotation.y=scfg.rot*Math.PI/180;
     gr.position.x=scfg.posX;
     gr.position.z=scfg.posZ;
+    gr.position.y=scfg.posY||0;
   }
   updateSceneBounds();
   // Global exposure (override HDRI exposure if no HDRI)
@@ -925,7 +936,7 @@ function U(){
   // Value displays
   $('sScaleV').textContent=Math.round(getSlotCfg(activeSlot).scale*100)+'%';
   $('sRotV').textContent=getSlotCfg(activeSlot).rot+'°';$('sSpinV').textContent=getSlotCfg(activeSlot).spin;
-  $('sPosXV').textContent=getSlotCfg(activeSlot).posX.toFixed(1);$('sPosZV').textContent=getSlotCfg(activeSlot).posZ.toFixed(1);
+  $('sPosXV').textContent=getSlotCfg(activeSlot).posX.toFixed(1);$('sPosZV').textContent=getSlotCfg(activeSlot).posZ.toFixed(1);$('sPosYV').textContent=getSlotCfg(activeSlot).posY.toFixed(1);
   $('logoSzV').textContent=c.logoSz;$('tTszV').textContent=c.tTsz;$('tSszV').textContent=c.tSsz;
   $('tBszV').textContent=c.tBsz;$('tOpV').textContent=Math.round(o*100)+'%';
   $('gExpV').textContent=c.gExp.toFixed(1);
@@ -1296,13 +1307,63 @@ function selSlot(idx,btn){
     dropEl.classList.remove('ld');dropEl.querySelector('.lb').innerHTML='Glissez un <strong>.glb / .stl</strong> ici';
   }
   // Restore controls
-  const cfg=sl._cfg||{scale:1,rot:0,posX:0,posZ:0,spin:0};
+  const cfg=sl._cfg||{scale:1,rot:0,posX:0,posZ:0,posY:0,spin:0};
   $('sScale').value=Math.round(cfg.scale*100);
   $('sRot').value=cfg.rot||0;
   $('sPosX').value=Math.round((cfg.posX||0)*10);
   $('sPosZ').value=Math.round((cfg.posZ||0)*10);
+  $('sPosY').value=Math.round((cfg.posY||0)*10);
   $('sSpin').value=cfg.spin||0;
+  // Update animation selector
+  updateAnimSelector(idx);
   U();
+}
+
+// ═══ RECENTER & ANIMATION ═══
+function recenterSlot(){
+  const sl=SLOTS[activeSlot],gr=sl.group;
+  if(!gr||!gr.children.length)return;
+  const root=gr.children[0];
+  // Reset scale to base
+  if(root.userData._baseScale)root.scale.setScalar(root.userData._baseScale);
+  // Recalculate bounds and center
+  const box=new THREE.Box3().setFromObject(root);
+  const center=box.getCenter(new THREE.Vector3());
+  root.position.x-=center.x;root.position.z-=center.z;
+  root.position.y-=box.min.y;// floor align
+  // Clear cached values so U() recalculates
+  delete root.userData._baseScale;delete root.userData._baseY;
+  // Reset sliders
+  $('sPosX').value=0;$('sPosZ').value=0;$('sPosY').value=0;$('sScale').value=100;
+  U();
+}
+
+function updateAnimSelector(slotIdx){
+  const sl=SLOTS[slotIdx];
+  const sel=$('animSel');
+  sel.innerHTML='<option value="-1">Aucune</option>';
+  if(sl.clips&&sl.clips.length>0){
+    sl.clips.forEach((clip,i)=>{
+      const o=document.createElement('option');o.value=i;o.textContent=clip.name||('Animation '+(i+1));
+      if(sl.activeClip===i)o.selected=true;
+      sel.appendChild(o);
+    });
+    $('animSelRow').style.display='';
+  }else{
+    $('animSelRow').style.display='none';
+  }
+}
+
+function switchAnim(clipIdx){
+  const sl=SLOTS[activeSlot];
+  if(!sl.mixer||!sl.clips)return;
+  sl.mixer.stopAllAction();
+  if(clipIdx>=0&&clipIdx<sl.clips.length){
+    sl.mixer.clipAction(sl.clips[clipIdx]).play();
+    sl.activeClip=clipIdx;
+  }else{
+    sl.activeClip=-1;
+  }
 }
 
 function camP(btn){document.querySelectorAll('#camPr .pb').forEach(b=>b.classList.remove('ac'));btn.classList.add('ac');$('cSpd').value=btn.dataset.s;$('cDst').value=btn.dataset.d;U();}
@@ -1392,8 +1453,8 @@ sD($('sDrop0'),$('sIn0'),f=>{
   const r=new FileReader();
   r.onload=e=>{
     sl.buf=e.target.result;
-    sl._cfg={scale:1,rot:0,posX:0,posZ:0,spin:0};// reset to defaults
-    $('sScale').value=100;$('sRot').value=0;$('sPosX').value=0;$('sPosZ').value=0;$('sSpin').value=0;
+    sl._cfg={scale:1,rot:0,posX:0,posZ:0,posY:0,spin:0};// reset to defaults
+    $('sScale').value=100;$('sRot').value=0;$('sPosX').value=0;$('sPosZ').value=0;$('sPosY').value=0;$('sSpin').value=0;
     loadModelSlot(activeSlot,e.target.result,sl.type);
   };
   r.readAsArrayBuffer(f);
@@ -1487,7 +1548,7 @@ function loadC_fromObj(c){
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
   if(c.slots&&c.slots[0]){
     $('sScale').value=Math.round((c.slots[0].scale||1)*100);$('sRot').value=c.slots[0].rot||0;
-    $('sPosX').value=Math.round((c.slots[0].posX||0)*10);$('sPosZ').value=Math.round((c.slots[0].posZ||0)*10);
+    $('sPosX').value=Math.round((c.slots[0].posX||0)*10);$('sPosZ').value=Math.round((c.slots[0].posZ||0)*10);$('sPosY').value=Math.round((c.slots[0].posY||0)*10);
     $('sSpin').value=c.slots[0].spin||0;
     for(let si=0;si<3;si++)if(c.slots[si])SLOTS[si]._cfg=c.slots[si];
   }
@@ -1718,7 +1779,8 @@ ${c.cine?`.cn{position:fixed;left:0;right:0;height:${c.cineH}vh;background:${c.b
 ${c.vig?`.vg{position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(5,5,8,.75) 100%);}`:''}
 ${c.grain?`.gr{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:128px;animation:gn .4s steps(5) infinite;}@keyframes gn{0%{transform:translate(0,0);}20%{transform:translate(-2px,1px);}40%{transform:translate(1px,-2px);}60%{transform:translate(-1px,2px);}80%{transform:translate(2px,-1px);}100%{transform:translate(0,0);}}`:''}
 </style></head><body>
-<div id="fs" onclick="document.documentElement.requestFullscreen().then(function(){document.body.classList.add('lv');document.getElementById('fs').classList.add('g');})"><p>Cliquez pour le plein écran</p><small>Touches 1-9 pour changer de scène · Échap pour quitter</small></div>
+<div id="fs" style="opacity:1;transition:opacity 1s;" onclick="document.documentElement.requestFullscreen().then(function(){document.body.classList.add('lv');document.getElementById('fs').classList.add('g');})"><p>Cliquez pour le plein écran (optionnel)</p><small>Touches 1-9 pour changer de scène · Le stream fonctionne aussi en fenêtre</small></div>
+<script>setTimeout(function(){var f=document.getElementById('fs');if(f&&!f.classList.contains('g')){f.style.opacity='0';setTimeout(function(){f.style.display='none';},1000);}},3000);<\/script>
 <div id="si"></div>
 ${c.cine?'<div class="cn ct"></div><div class="cn cb"></div>':''}
 ${c.vig?'<div class="vg"></div>':''}${c.grain?'<div class="gr"></div>':''}
@@ -1756,7 +1818,7 @@ var bM=MATS.bronze,dM=new THREE.MeshStandardMaterial({color:0x5C4A3A,roughness:.
 var pM=new THREE.MeshStandardMaterial({color:0x252528,roughness:.35,metalness:.08}),aM=new THREE.MeshStandardMaterial({color:0x18181b,roughness:.3,metalness:.05});
 var G=new THREE.Group(),mC=new THREE.Vector3(0,2.2,0),mH=4.4;
 G.rotation.y=${c.slots[0].rot}*Math.PI/180;
-G.position.x=${c.slots[0].posX||0};G.position.z=${c.slots[0].posZ||0};
+G.position.x=${c.slots[0].posX||0};G.position.z=${c.slots[0].posZ||0};G.position.y=${c.slots[0].posY||0};
 function buildDef(){function mk(g,m,y){var o=new THREE.Mesh(g,m);o.position.y=y;o.castShadow=o.receiveShadow=true;return o;}
 G.add(mk(new THREE.BoxGeometry(2.4,.12,2.4),aM,.06));G.add(mk(new THREE.BoxGeometry(2,.1,2),aM,.17));
 G.add(mk(new THREE.BoxGeometry(1.4,2.2,1.4),pM,1.37));G.add(mk(new THREE.BoxGeometry(1.6,.08,1.6),pM,2.51));G.add(mk(new THREE.BoxGeometry(1.5,.06,1.5),pM,2.58));
@@ -1788,7 +1850,7 @@ ${[1,2].map(si=>{
 (function(){
   var sl=null;try{sl=window.opener&&window.opener.getState&&window.opener.getState().slots[${si}];}catch(e){}
   if(!sl||!sl.buf)return;
-  var grp=new THREE.Group();grp.rotation.y=${sc.rot}*Math.PI/180;grp.position.x=${sc.posX};grp.position.z=${sc.posZ};
+  var grp=new THREE.Group();grp.rotation.y=${sc.rot}*Math.PI/180;grp.position.x=${sc.posX};grp.position.z=${sc.posZ};grp.position.y=${sc.posY||0};
   if(sl.type==='stl'){
     var geo=new THREE.STLLoader().parse(sl.buf);geo.computeVertexNormals();
     var mesh=new THREE.Mesh(geo,MATS.bronze.clone());
