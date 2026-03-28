@@ -416,7 +416,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </div></div>
 
 </div>
-<div class="pf"><button class="launch" onclick="openPopup()">Lancer la fenêtre OBS</button><div class="fh">Capturez la fenêtre dans OBS · Touche F = plein écran</div></div>
+<div class="pf"><button class="launch" onclick="openPopup()">Lancer la fenêtre OBS</button><div class="fh">Dans OBS : Capture de fenêtre · Touche F = plein écran · Chrome masque la barre d'URL</div></div>
 </div>
 
 <div id="pv">
@@ -2013,8 +2013,10 @@ document.addEventListener('fullscreenchange',function(){if(!document.fullscreenE
 document.addEventListener('keydown',function(e){
   // F = toggle fullscreen
   if(e.key==='f'||e.key==='F'){
-    if(document.fullscreenElement)document.exitFullscreen();
-    else document.documentElement.requestFullscreen().then(function(){document.body.classList.add('lv');});
+    try{
+      if(document.fullscreenElement){document.exitFullscreen().catch(function(){});}
+      else{document.documentElement.requestFullscreen().then(function(){document.body.classList.add('lv');}).catch(function(){});}
+    }catch(ex){}
     return;
   }
   var k=parseInt(e.key);if(isNaN(k)||k<1||k>9)return;
