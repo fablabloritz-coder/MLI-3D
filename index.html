@@ -122,7 +122,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </div>
 <div id="slotPanel">
 <div id="sDrop0" class="drop"><div class="lb">Glissez un <strong>.glb / .stl</strong> ici</div><input type="file" accept=".glb,.gltf,.stl" style="display:none" id="sIn0"></div>
-<div class="f" style="margin-top:6px"><label>Échelle</label><div class="sr"><input type="range" id="sScale" min="20" max="300" value="100"><span class="v" id="sScaleV">100%</span></div></div>
+<div class="f" style="margin-top:6px"><label>Échelle</label><div class="sr"><input type="range" id="sScale" min="5" max="1000" value="100"><span class="v" id="sScaleV">100%</span></div></div>
 <div class="f"><label>Orientation (°)</label><div class="sr"><input type="range" id="sRot" min="0" max="360" value="0"><span class="v" id="sRotV">0°</span></div></div>
 <div class="f"><label>Position X</label><div class="sr"><input type="range" id="sPosX" min="-50" max="50" value="0"><span class="v" id="sPosXV">0</span></div></div>
 <div class="f"><label>Position Z</label><div class="sr"><input type="range" id="sPosZ" min="-50" max="50" value="0"><span class="v" id="sPosZV">0</span></div></div>
@@ -276,7 +276,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <button class="pb" data-s="25" data-d="110" onclick="camP(this)">Panoramique</button>
 </div></div>
 <div class="f"><label>Vitesse</label><div class="sr"><input type="range" id="cSpd" min="3" max="50" value="18"><span class="v" id="cSpdV">18</span></div></div>
-<div class="f"><label>Distance</label><div class="sr"><input type="range" id="cDst" min="40" max="150" value="80"><span class="v" id="cDstV">80%</span></div></div>
+<div class="f"><label>Distance</label><div class="sr"><input type="range" id="cDst" min="10" max="200" value="80"><span class="v" id="cDstV">80%</span></div></div>
 <div class="f"><label>Point de visée (hauteur)</label><div class="sr"><input type="range" id="cLookY" min="-20" max="20" value="0"><span class="v" id="cLookYV">0</span></div></div>
 <div class="st">Mode</div>
 <div class="f"><label>Type</label><select id="camMode"><option value="continuous" selected>Continu (fluide)</option><option value="cuts">Plans enchaînés (fondu noir)</option></select></div>
