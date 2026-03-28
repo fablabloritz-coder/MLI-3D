@@ -277,7 +277,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </div></div>
 <div class="f"><label>Vitesse</label><div class="sr"><input type="range" id="cSpd" min="3" max="50" value="18"><span class="v" id="cSpdV">18</span></div></div>
 <div class="f"><label>Distance</label><div class="sr"><input type="range" id="cDst" min="10" max="200" value="80"><span class="v" id="cDstV">80%</span></div></div>
-<div class="f"><label>Point de visée (hauteur)</label><div class="sr"><input type="range" id="cLookY" min="-20" max="20" value="0"><span class="v" id="cLookYV">0</span></div></div>
+<div class="f"><label>Point de visée (hauteur)</label><div class="sr"><input type="range" id="cLookY" min="-50" max="50" value="0"><span class="v" id="cLookYV">0</span></div></div>
 <div class="st">Mode</div>
 <div class="f"><label>Type</label><select id="camMode"><option value="continuous" selected>Continu (fluide)</option><option value="cuts">Plans enchaînés (fondu noir)</option></select></div>
 <div class="f"><label>Durée par plan</label><div class="sr"><input type="range" id="cutDur" min="30" max="150" value="80"><span class="v" id="cutDurV">8s</span></div></div>
@@ -291,7 +291,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Intensité</label><div class="sr"><input type="range" id="bloomI" min="1" max="30" value="8"><span class="v" id="bloomIV">0.8</span></div></div>
 <div class="tr"><span>Profondeur de champ</span><button class="tg" id="togDof" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Flou</label><div class="sr"><input type="range" id="dofAp" min="1" max="50" value="15"><span class="v" id="dofApV">1.5</span></div></div>
-<div class="f"><label>Brouillard (profondeur)</label><div class="sr"><input type="range" id="fogD" min="0" max="50" value="12"><span class="v" id="fogDV">12</span></div></div>
+<div class="tr"><span>Brouillard de scène</span><button class="tg" id="togFog" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Densité brouillard</label><div class="sr"><input type="range" id="fogD" min="1" max="50" value="12"><span class="v" id="fogDV">12</span></div></div>
+<div class="fh" style="text-align:left;font-size:10px;">Désactiver pour les GLB avec environnement intégré (forêts, villes…)</div>
 <div class="tr"><span>Barres cinéma</span><button class="tg on" id="togCine" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Hauteur</label><div class="sr"><input type="range" id="cineH" min="2" max="12" value="5"><span class="v" id="cineHV">5%</span></div></div>
 <div class="tr"><span>Grain pellicule</span><button class="tg on" id="togGrain" onclick="this.classList.toggle('on');U()"></button></div>
@@ -467,7 +469,7 @@ window.getConfig=()=>({
   mat:S.curMat,
   hdri:$('hdri').value,hdriBg:$('togHdriBg').classList.contains('on'),hdriInt:+$('hdriInt').value/10,
   bloom:$('togBloom').classList.contains('on'),bloomI:+$('bloomI').value/10,
-  dof:$('togDof').classList.contains('on'),dofAp:+$('dofAp').value/10,fogD:+$('fogD').value/1000,
+  dof:$('togDof').classList.contains('on'),dofAp:+$('dofAp').value/10,fog:$('togFog').classList.contains('on'),fogD:+$('fogD').value/1000,
   txtAnim:$('txtAnim').value,animDur:+$('animDur').value/10,
   cine:$('togCine').classList.contains('on'),cineH:+$('cineH').value,
   grain:$('togGrain').classList.contains('on'),vig:$('togVig').classList.contains('on'),
@@ -933,9 +935,9 @@ function U(){
   loadHDRI(c.hdri);
   if(c.hdri){
     if(c.hdriBg&&scene.environment){scene.background=scene.environment;scene.fog.density=0;}
-    else{scene.background=null;scene.fog.density=(c.fogD||0.012);}
+    else{scene.background=null;scene.fog.density=c.fog?(c.fogD||0.012):0;}
     R.toneMappingExposure=c.gExp*c.hdriInt;
-  }else{scene.background=null;scene.fog.density=(c.fogD||0.012);R.toneMappingExposure=c.gExp;}
+  }else{scene.background=null;scene.fog.density=c.fog?(c.fogD||0.012):0;R.toneMappingExposure=c.gExp;}
 
   // Logo
   if(logoEl&&logoEl.parentNode)logoEl.parentNode.removeChild(logoEl);
@@ -1577,7 +1579,7 @@ function loadC_fromObj(c){
   if(c.l2I!=null)$('l2I').value=Math.round(c.l2I*10);
   if(c.cLookY!=null)$('cLookY').value=Math.round(c.cLookY*10);
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
-  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
   // Restore custom font if not a preset
   if(c.fontT){
@@ -1689,7 +1691,7 @@ function anim(t){
   cp+=dt*spd;if(cp>1)cp-=1;
   const wp=getWP(dist,lookYOff),pos=es(wp.p,cp),lk=es(wp.l,cp);
   // Clamp camera above floor
-  pos.y=Math.max(0.3,pos.y);
+  // no floor clamp — lookAt Y controls height
   cam.position.copy(pos);cam.position.x+=Math.sin(el*.35)*.012;cam.position.y+=Math.cos(el*.28)*.008;
   cam.lookAt(lk);
 
@@ -1819,7 +1821,7 @@ ${c.dof?`<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/sha
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/BokehPass.js"><\/script>`:''}
 <script>
 var MATS={bronze:new THREE.MeshStandardMaterial({color:0x8B7355,roughness:.5,metalness:.75}),marble:new THREE.MeshStandardMaterial({color:0xf0ebe3,roughness:.25,metalness:.02}),chrome:new THREE.MeshStandardMaterial({color:0xcccccc,roughness:.05,metalness:1}),gold:new THREE.MeshStandardMaterial({color:0xd4a843,roughness:.3,metalness:.9}),matte:new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.95,metalness:0})};
-var scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x${bgH},${c.hdriBg&&c.hdri?'0':c.fogD||0.012});
+var scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x${bgH},${(!c.fog||(c.hdriBg&&c.hdri))?'0':c.fogD||0.012});
 var camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.01,500);
 var R=new THREE.WebGLRenderer({antialias:true});R.setSize(innerWidth,innerHeight);R.setPixelRatio(1);
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=${c.hdri?c.gExp*c.hdriInt:c.gExp};R.outputEncoding=THREE.sRGBEncoding;R.setClearColor(0x${bgH},${S.bgURL?0:1});
@@ -1963,7 +1965,7 @@ if(mixer)mixer.update(dt);
 ${c.camMode==='cuts'?`cutT+=dt;if(cutPh==='show'&&cutT>${c.cutDur}-0.8){cutPh='fadeout';fadeEl.style.opacity='1';}if(cutPh==='fadeout'&&cutT>${c.cutDur}){cp=nextShot();cutPh='fadein';cutT=0;setTimeout(function(){fadeEl.style.opacity='0';cutPh='show';},100);}`:''}
 cp+=dt*${c.camSpd}/1000;if(cp>1)cp-=1;
 var wp=getWP(),pos=ES(wp.p,cp),lk=ES(wp.l,cp);
-pos.y=Math.max(.3,pos.y);
+
 camera.position.copy(pos);camera.position.x+=Math.sin(el*.35)*.012;camera.position.y+=Math.cos(el*.28)*.008;camera.lookAt(lk);
 ${c.slots[0].spin>0?`G.rotation.y+=${c.slots[0].spin}/100*dt;`:''}
 ${c.dof?`bkp.uniforms['focus'].value=camera.position.distanceTo(mC);`:''}
