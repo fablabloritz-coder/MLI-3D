@@ -543,16 +543,18 @@ function updateSceneBounds(){
     mC=b0.getCenter(new THREE.Vector3());
     mH=b0.max.y-b0.min.y;
   }else{mC.set(0,2.2,0);mH=4.4;}
-  // Scene width = all slots (for camera distance)
-  const box=new THREE.Box3();let hasAny=false;
+  // Scene width = spread between slot POSITIONS (not model sizes)
+  let maxSpread=0;
+  const positions=[];
   for(let i=0;i<3;i++){
     const gr=SLOTS[i].group;
-    if(gr&&gr.children.length>0){
-      const b=new THREE.Box3().setFromObject(gr);
-      if(hasAny)box.union(b);else{box.copy(b);hasAny=true;}
-    }
+    if(gr&&gr.children.length>0){const cfg=getSlotCfg(i);positions.push({x:cfg.posX,z:cfg.posZ});}
   }
-  if(hasAny){const sz=box.getSize(new THREE.Vector3());mW=Math.max(sz.x,sz.z,2);}else{mW=2;}
+  for(let i=0;i<positions.length;i++)for(let j=i+1;j<positions.length;j++){
+    const dx=positions[i].x-positions[j].x,dz=positions[i].z-positions[j].z;
+    maxSpread=Math.max(maxSpread,Math.sqrt(dx*dx+dz*dz));
+  }
+  mW=Math.max(2,maxSpread*2);
   if(typeof kL!=='undefined'){kL.target.position.set(mC.x,mC.y,mC.z);rL.target.position.set(mC.x,mC.y+0.3,mC.z);fL.target.position.set(mC.x,mC.y,mC.z);l2.target.position.set(mC.x,mC.y,mC.z);}
 }
 
