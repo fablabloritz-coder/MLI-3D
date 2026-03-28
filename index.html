@@ -416,7 +416,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </div></div>
 
 </div>
-<div class="pf"><button class="launch" onclick="openPopup()">Lancer la fenêtre OBS</button><div class="fh">Cliquez dans la fenêtre pour le plein écran</div></div>
+<div class="pf"><button class="launch" onclick="openPopup()">Lancer la fenêtre OBS</button><div class="fh">Capturez la fenêtre dans OBS · Touche F = plein écran</div></div>
 </div>
 
 <div id="pv">
@@ -1808,10 +1808,6 @@ return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${c.title}</titl
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Raleway:wght@200;300;400&family=Playfair+Display:wght@400;500&family=Cinzel:wght@400;500&family=Montserrat:wght@200;300;400&family=Bebas+Neue&family=Oswald:wght@300;400&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}body{overflow:hidden;background:${c.bg};width:100vw;height:100vh;}body.lv{cursor:none;}canvas{display:block;}
-#fs{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;cursor:pointer;}
-#fs.g{opacity:0;pointer-events:none;transition:opacity .5s;}
-#fs p{font-family:'Raleway',sans-serif;font-weight:300;color:rgba(220,200,170,.8);letter-spacing:.12em;font-size:1rem;}
-#fs small{font-family:'Raleway',sans-serif;font-weight:200;color:rgba(220,200,170,.3);font-size:.7rem;}
 #si{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:40;font-family:'Raleway',sans-serif;font-size:.8rem;color:rgba(220,200,170,.7);background:rgba(0,0,0,.5);padding:6px 16px;border-radius:4px;opacity:0;transition:opacity .4s;pointer-events:none;}
 #si.sh{opacity:1;}
 #o{position:fixed;inset:0;pointer-events:none;z-index:10;display:flex;flex-direction:column;justify-content:space-between;padding:${cP} 4vw;}
@@ -1835,8 +1831,6 @@ ${c.cine?`.cn{position:fixed;left:0;right:0;height:${c.cineH}vh;background:${c.b
 ${c.vig?`.vg{position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(5,5,8,.75) 100%);}`:''}
 ${c.grain?`.gr{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:128px;animation:gn .4s steps(5) infinite;}@keyframes gn{0%{transform:translate(0,0);}20%{transform:translate(-2px,1px);}40%{transform:translate(1px,-2px);}60%{transform:translate(-1px,2px);}80%{transform:translate(2px,-1px);}100%{transform:translate(0,0);}}`:''}
 </style></head><body>
-<div id="fs" style="opacity:1;transition:opacity 1s;" onclick="document.documentElement.requestFullscreen().then(function(){document.body.classList.add('lv');document.getElementById('fs').classList.add('g');})"><p>Cliquez pour le plein écran (optionnel)</p><small>Touches 1-9 pour changer de scène · Le stream fonctionne aussi en fenêtre</small></div>
-<script>setTimeout(function(){var f=document.getElementById('fs');if(f&&!f.classList.contains('g')){f.style.opacity='0';setTimeout(function(){f.style.display='none';},1000);}},3000);<\/script>
 <div id="si"></div>
 ${c.cine?'<div class="cn ct"></div><div class="cn cb"></div>':''}
 ${c.vig?'<div class="vg"></div>':''}${c.grain?'<div class="gr"></div>':''}
@@ -2015,8 +2009,14 @@ kL.target.position.set(mC.x,mC.y,mC.z);fL.target.position.set(mC.x,mC.y,mC.z);rL
 fTimes.push(performance.now());if(fTimes.length>30){fTimes.shift();var avg=30000/(fTimes[fTimes.length-1]-fTimes[0]);if(avg<20&&adaptPR>.5){adaptPR=Math.max(.4,adaptPR-.25);R.setPixelRatio(adaptPR);}else if(avg>28&&adaptPR<1.5){adaptPR=Math.min(1.5,adaptPR+.125);R.setPixelRatio(adaptPR);}}
 ${(c.bloom||c.dof)?'comp.render();':'R.render(scene,camera);'}}anim();
 addEventListener('resize',function(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);${(c.bloom||c.dof)?'comp.setSize(innerWidth,innerHeight);':''}});
-document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement){document.body.classList.remove('lv');document.getElementById('fs').classList.remove('g');}});
+document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement)document.body.classList.remove('lv');});
 document.addEventListener('keydown',function(e){
+  // F = toggle fullscreen
+  if(e.key==='f'||e.key==='F'){
+    if(document.fullscreenElement)document.exitFullscreen();
+    else document.documentElement.requestFullscreen().then(function(){document.body.classList.add('lv');});
+    return;
+  }
   var k=parseInt(e.key);if(isNaN(k)||k<1||k>9)return;
   var scenes=null;try{scenes=window.opener&&window.opener.getScenes&&window.opener.getScenes();}catch(ex){}
   if(!scenes||!scenes[k-1])return;
