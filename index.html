@@ -952,35 +952,101 @@ function U(){
 // ═══ CROWD SILHOUETTE & PAPARAZZI FLASHES ═══
 let crowdMesh=null,crowdCacheKey='',flashLights=[],flashTimers=[];
 
+// 8 realistic silhouette shapes as Path2D drawing functions
+// Each draws a person at (0,0) with bottom at y=0, facing right, ~100px tall
+const CROWD_SILHOUETTES=[
+  // 0: Standing casual, slight hip shift
+  (ctx,s)=>{ctx.beginPath();ctx.ellipse(0,-88*s,6*s,7*s,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-1*s,-81*s);ctx.bezierCurveTo(-10*s,-78*s,-12*s,-55*s,-11*s,-42*s);
+    ctx.bezierCurveTo(-10*s,-30*s,-8*s,-20*s,-9*s,0);ctx.lineTo(-3*s,0);
+    ctx.bezierCurveTo(-3*s,-18*s,-2*s,-30*s,-1*s,-42*s);
+    ctx.bezierCurveTo(0,-30*s,1*s,-18*s,2*s,0);ctx.lineTo(8*s,0);
+    ctx.bezierCurveTo(9*s,-20*s,11*s,-30*s,12*s,-42*s);
+    ctx.bezierCurveTo(13*s,-55*s,10*s,-78*s,1*s,-81*s);ctx.closePath();ctx.fill();},
+  // 1: Arm up with phone
+  (ctx,s)=>{ctx.beginPath();ctx.ellipse(0,-90*s,6*s,7*s,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-1*s,-83*s);ctx.bezierCurveTo(-12*s,-78*s,-13*s,-55*s,-11*s,-40*s);
+    ctx.lineTo(-9*s,0);ctx.lineTo(-3*s,0);ctx.lineTo(-2*s,-40*s);
+    ctx.lineTo(2*s,-40*s);ctx.lineTo(3*s,0);ctx.lineTo(9*s,0);
+    ctx.bezierCurveTo(10*s,-30*s,12*s,-55*s,1*s,-83*s);ctx.closePath();ctx.fill();
+    // Raised arm + phone
+    ctx.beginPath();ctx.moveTo(8*s,-78*s);ctx.bezierCurveTo(12*s,-85*s,14*s,-100*s,12*s,-110*s);
+    ctx.lineTo(8*s,-110*s);ctx.bezierCurveTo(9*s,-100*s,8*s,-88*s,5*s,-78*s);ctx.closePath();ctx.fill();
+    ctx.fillRect(7*s,-116*s,8*s,6*s);},// phone
+  // 2: Both arms up (cheering)
+  (ctx,s)=>{ctx.beginPath();ctx.ellipse(0,-88*s,6*s,7*s,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-1*s,-81*s);ctx.bezierCurveTo(-11*s,-76*s,-12*s,-55*s,-10*s,-40*s);
+    ctx.lineTo(-8*s,0);ctx.lineTo(-2*s,0);ctx.lineTo(-1*s,-40*s);ctx.lineTo(1*s,-40*s);
+    ctx.lineTo(2*s,0);ctx.lineTo(8*s,0);ctx.bezierCurveTo(10*s,-30*s,11*s,-55*s,1*s,-81*s);ctx.closePath();ctx.fill();
+    // Left arm up
+    ctx.beginPath();ctx.moveTo(-8*s,-76*s);ctx.bezierCurveTo(-14*s,-90*s,-16*s,-105*s,-12*s,-112*s);
+    ctx.lineTo(-9*s,-108*s);ctx.bezierCurveTo(-10*s,-95*s,-6*s,-82*s,-4*s,-76*s);ctx.closePath();ctx.fill();
+    // Right arm up
+    ctx.beginPath();ctx.moveTo(8*s,-76*s);ctx.bezierCurveTo(14*s,-90*s,15*s,-105*s,11*s,-112*s);
+    ctx.lineTo(8*s,-108*s);ctx.bezierCurveTo(9*s,-95*s,6*s,-82*s,4*s,-76*s);ctx.closePath();ctx.fill();},
+  // 3: Camera person (wider, holding camera at face)
+  (ctx,s)=>{ctx.beginPath();ctx.ellipse(0,-85*s,6*s,7*s,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-1*s,-78*s);ctx.bezierCurveTo(-13*s,-74*s,-14*s,-50*s,-12*s,-35*s);
+    ctx.lineTo(-10*s,0);ctx.lineTo(-4*s,0);ctx.lineTo(-3*s,-35*s);ctx.lineTo(3*s,-35*s);
+    ctx.lineTo(4*s,0);ctx.lineTo(10*s,0);ctx.bezierCurveTo(12*s,-35*s,13*s,-60*s,1*s,-78*s);ctx.closePath();ctx.fill();
+    // Camera at face level
+    ctx.beginPath();ctx.moveTo(7*s,-80*s);ctx.lineTo(18*s,-82*s);ctx.lineTo(19*s,-75*s);ctx.lineTo(7*s,-73*s);ctx.closePath();ctx.fill();
+    ctx.fillRect(18*s,-84*s,4*s,3*s);},// lens
+  // 4: Short person / child
+  (ctx,s)=>{const ss=s*0.7;ctx.beginPath();ctx.ellipse(0,-60*ss,5*ss,6*ss,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-1*ss,-54*ss);ctx.bezierCurveTo(-9*ss,-50*ss,-10*ss,-35*ss,-8*ss,-20*ss);
+    ctx.lineTo(-7*ss,0);ctx.lineTo(-2*ss,0);ctx.lineTo(-1*ss,-20*ss);ctx.lineTo(1*ss,-20*ss);
+    ctx.lineTo(2*ss,0);ctx.lineTo(7*ss,0);ctx.bezierCurveTo(8*ss,-25*ss,9*ss,-50*ss,1*ss,-54*ss);ctx.closePath();ctx.fill();},
+  // 5: Person with hat
+  (ctx,s)=>{// Hat brim
+    ctx.fillRect(-10*s,-97*s,20*s,3*s);
+    ctx.beginPath();ctx.ellipse(0,-100*s,6*s,4*s,0,0,Math.PI*2);ctx.fill();// hat top
+    ctx.beginPath();ctx.ellipse(0,-90*s,6*s,7*s,0,0,Math.PI*2);ctx.fill();// head
+    ctx.beginPath();ctx.moveTo(-1*s,-83*s);ctx.bezierCurveTo(-11*s,-78*s,-12*s,-55*s,-10*s,-40*s);
+    ctx.lineTo(-8*s,0);ctx.lineTo(-2*s,0);ctx.lineTo(-1*s,-40*s);ctx.lineTo(1*s,-40*s);
+    ctx.lineTo(2*s,0);ctx.lineTo(8*s,0);ctx.bezierCurveTo(10*s,-40*s,11*s,-60*s,1*s,-83*s);ctx.closePath();ctx.fill();},
+  // 6: Person leaning/angled, arm out pointing
+  (ctx,s)=>{ctx.save();ctx.rotate(0.08);
+    ctx.beginPath();ctx.ellipse(0,-86*s,6*s,7*s,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-1*s,-79*s);ctx.bezierCurveTo(-11*s,-74*s,-12*s,-50*s,-10*s,-38*s);
+    ctx.lineTo(-9*s,0);ctx.lineTo(-3*s,0);ctx.lineTo(-2*s,-38*s);ctx.lineTo(2*s,-38*s);
+    ctx.lineTo(3*s,0);ctx.lineTo(9*s,0);ctx.bezierCurveTo(10*s,-38*s,11*s,-55*s,1*s,-79*s);ctx.closePath();ctx.fill();
+    // Arm pointing
+    ctx.beginPath();ctx.moveTo(8*s,-72*s);ctx.lineTo(22*s,-68*s);ctx.lineTo(22*s,-64*s);ctx.lineTo(7*s,-67*s);ctx.closePath();ctx.fill();
+    ctx.restore();},
+  // 7: Broad/tall person
+  (ctx,s)=>{const ss=s*1.15;ctx.beginPath();ctx.ellipse(0,-95*ss,7*ss,8*ss,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-2*ss,-87*ss);ctx.bezierCurveTo(-14*ss,-82*ss,-15*ss,-58*ss,-13*ss,-42*ss);
+    ctx.lineTo(-11*ss,0);ctx.lineTo(-4*ss,0);ctx.lineTo(-3*ss,-42*ss);ctx.lineTo(3*ss,-42*ss);
+    ctx.lineTo(4*ss,0);ctx.lineTo(11*ss,0);ctx.bezierCurveTo(13*ss,-42*ss,14*ss,-65*ss,2*ss,-87*ss);ctx.closePath();ctx.fill();}
+];
+
 function buildCrowdTexture(density){
-  const cv=document.createElement('canvas');cv.width=1024;cv.height=256;
+  const cv=document.createElement('canvas');cv.width=2048;cv.height=512;
   const ctx=cv.getContext('2d');
-  ctx.clearRect(0,0,1024,256);
-  // Draw crowd silhouettes along the bottom
+  ctx.clearRect(0,0,2048,512);
+  const spacing=2048/density;
   for(let i=0;i<density;i++){
-    const x=i*(1024/density)+Math.random()*15-7;
-    const headR=5+Math.random()*4;
-    const bodyW=12+Math.random()*10;
-    const h=80+Math.random()*80;// silhouette height variation
-    const shoulderW=bodyW*1.2;
-    const y=256;// bottom
-    ctx.fillStyle=`rgba(0,0,0,${0.6+Math.random()*0.35})`;
-    // Head
-    ctx.beginPath();ctx.arc(x,y-h,headR,0,Math.PI*2);ctx.fill();
-    // Body (trapezoid)
-    ctx.beginPath();
-    ctx.moveTo(x-shoulderW/2,y-h+headR+2);
-    ctx.lineTo(x+shoulderW/2,y-h+headR+2);
-    ctx.lineTo(x+bodyW/2+4,y);
-    ctx.lineTo(x-bodyW/2-4,y);
-    ctx.closePath();ctx.fill();
-    // Some people have arms up (phones/cameras)
-    if(Math.random()>0.6){
-      const armSide=Math.random()>0.5?1:-1;
-      ctx.fillRect(x+armSide*(shoulderW/2-2),y-h-15-Math.random()*20,4,25+Math.random()*15);
-      // Phone/camera rectangle at top of arm
-      ctx.fillRect(x+armSide*(shoulderW/2-4),y-h-18-Math.random()*20,8,6);
-    }
+    const x=i*spacing+spacing/2+(Math.random()-0.5)*spacing*0.4;
+    const baseScale=1.2+Math.random()*1.4;// size variation
+    const silIdx=Math.floor(Math.random()*CROWD_SILHOUETTES.length);
+    const alpha=0.55+Math.random()*0.4;
+    ctx.save();
+    ctx.translate(x,512);
+    ctx.fillStyle=`rgba(0,0,0,${alpha})`;
+    CROWD_SILHOUETTES[silIdx](ctx,baseScale);
+    ctx.restore();
+  }
+  // Second row behind (smaller, more transparent)
+  for(let i=0;i<Math.round(density*0.6);i++){
+    const x=i*(2048/(density*0.6))+(Math.random()-0.5)*30;
+    const baseScale=0.7+Math.random()*0.8;
+    const silIdx=Math.floor(Math.random()*CROWD_SILHOUETTES.length);
+    ctx.save();
+    ctx.translate(x,512-20-Math.random()*30);// offset up = "behind"
+    ctx.fillStyle=`rgba(0,0,0,${0.2+Math.random()*0.25})`;
+    CROWD_SILHOUETTES[silIdx](ctx,baseScale);
+    ctx.restore();
   }
   return cv;
 }
@@ -1721,9 +1787,18 @@ for(var hi=0;hi<6;hi++){
 ${hdriCode}
 ${c.dust?`var PC=${c.dustCount},pG=new THREE.BufferGeometry(),pA=new Float32Array(PC*3),pS=new Float32Array(PC),pD=new Float32Array(PC);for(var i=0;i<PC;i++){pA[i*3]=(Math.random()-.5)*14;pA[i*3+1]=Math.random()*8;pA[i*3+2]=(Math.random()-.5)*14;pS[i]=.003+Math.random()*.006;pD[i]=Math.random()*Math.PI*2;}pG.setAttribute('position',new THREE.BufferAttribute(pA,3));var ptMat=new THREE.PointsMaterial({color:0xddc8aa,size:${c.dustSize},transparent:true,opacity:.25,sizeAttenuation:true});${S.particleURL?`var ptTex=new THREE.TextureLoader().load('${S.particleURL}');ptMat.map=ptTex;ptMat.alphaMap=ptTex;ptMat.alphaTest=0.01;`:''}scene.add(new THREE.Points(pG,ptMat));`:''}
 ${c.crowd?`
-// Crowd silhouettes
-var crCv=document.createElement('canvas');crCv.width=1024;crCv.height=256;var crCtx=crCv.getContext('2d');
-for(var ci=0;ci<${c.crowdDensity};ci++){var cx=ci*(1024/${c.crowdDensity})+Math.random()*15-7,hR=5+Math.random()*4,bW=12+Math.random()*10,hh=80+Math.random()*80,sW=bW*1.2;crCtx.fillStyle='rgba(0,0,0,'+(0.6+Math.random()*0.35)+')';crCtx.beginPath();crCtx.arc(cx,256-hh,hR,0,Math.PI*2);crCtx.fill();crCtx.beginPath();crCtx.moveTo(cx-sW/2,256-hh+hR+2);crCtx.lineTo(cx+sW/2,256-hh+hR+2);crCtx.lineTo(cx+bW/2+4,256);crCtx.lineTo(cx-bW/2-4,256);crCtx.closePath();crCtx.fill();if(Math.random()>.6){var as=Math.random()>.5?1:-1;crCtx.fillRect(cx+as*(sW/2-2),256-hh-15-Math.random()*20,4,25+Math.random()*15);crCtx.fillRect(cx+as*(sW/2-4),256-hh-18-Math.random()*20,8,6);}}
+// Crowd SVG silhouettes
+var SIL=[
+function(x,s,a){x.beginPath();x.ellipse(0,-88*s,6*s,7*s,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-1*s,-81*s);x.bezierCurveTo(-10*s,-78*s,-12*s,-55*s,-11*s,-42*s);x.bezierCurveTo(-10*s,-30*s,-8*s,-20*s,-9*s,0);x.lineTo(-3*s,0);x.bezierCurveTo(-3*s,-18*s,-2*s,-30*s,-1*s,-42*s);x.bezierCurveTo(0,-30*s,1*s,-18*s,2*s,0);x.lineTo(8*s,0);x.bezierCurveTo(9*s,-20*s,11*s,-30*s,12*s,-42*s);x.bezierCurveTo(13*s,-55*s,10*s,-78*s,1*s,-81*s);x.closePath();x.fill();},
+function(x,s){x.beginPath();x.ellipse(0,-90*s,6*s,7*s,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-1*s,-83*s);x.bezierCurveTo(-12*s,-78*s,-13*s,-55*s,-11*s,-40*s);x.lineTo(-9*s,0);x.lineTo(-3*s,0);x.lineTo(-2*s,-40*s);x.lineTo(2*s,-40*s);x.lineTo(3*s,0);x.lineTo(9*s,0);x.bezierCurveTo(10*s,-30*s,12*s,-55*s,1*s,-83*s);x.closePath();x.fill();x.beginPath();x.moveTo(8*s,-78*s);x.bezierCurveTo(12*s,-85*s,14*s,-100*s,12*s,-110*s);x.lineTo(8*s,-110*s);x.bezierCurveTo(9*s,-100*s,8*s,-88*s,5*s,-78*s);x.closePath();x.fill();x.fillRect(7*s,-116*s,8*s,6*s);},
+function(x,s){x.beginPath();x.ellipse(0,-88*s,6*s,7*s,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-1*s,-81*s);x.bezierCurveTo(-11*s,-76*s,-12*s,-55*s,-10*s,-40*s);x.lineTo(-8*s,0);x.lineTo(-2*s,0);x.lineTo(-1*s,-40*s);x.lineTo(1*s,-40*s);x.lineTo(2*s,0);x.lineTo(8*s,0);x.bezierCurveTo(10*s,-30*s,11*s,-55*s,1*s,-81*s);x.closePath();x.fill();x.beginPath();x.moveTo(-8*s,-76*s);x.bezierCurveTo(-14*s,-90*s,-16*s,-105*s,-12*s,-112*s);x.lineTo(-9*s,-108*s);x.bezierCurveTo(-10*s,-95*s,-6*s,-82*s,-4*s,-76*s);x.closePath();x.fill();x.beginPath();x.moveTo(8*s,-76*s);x.bezierCurveTo(14*s,-90*s,15*s,-105*s,11*s,-112*s);x.lineTo(8*s,-108*s);x.bezierCurveTo(9*s,-95*s,6*s,-82*s,4*s,-76*s);x.closePath();x.fill();},
+function(x,s){x.beginPath();x.ellipse(0,-85*s,6*s,7*s,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-1*s,-78*s);x.bezierCurveTo(-13*s,-74*s,-14*s,-50*s,-12*s,-35*s);x.lineTo(-10*s,0);x.lineTo(-4*s,0);x.lineTo(-3*s,-35*s);x.lineTo(3*s,-35*s);x.lineTo(4*s,0);x.lineTo(10*s,0);x.bezierCurveTo(12*s,-35*s,13*s,-60*s,1*s,-78*s);x.closePath();x.fill();x.beginPath();x.moveTo(7*s,-80*s);x.lineTo(18*s,-82*s);x.lineTo(19*s,-75*s);x.lineTo(7*s,-73*s);x.closePath();x.fill();x.fillRect(18*s,-84*s,4*s,3*s);},
+function(x,s){var ss=s*.7;x.beginPath();x.ellipse(0,-60*ss,5*ss,6*ss,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-1*ss,-54*ss);x.bezierCurveTo(-9*ss,-50*ss,-10*ss,-35*ss,-8*ss,-20*ss);x.lineTo(-7*ss,0);x.lineTo(-2*ss,0);x.lineTo(-1*ss,-20*ss);x.lineTo(1*ss,-20*ss);x.lineTo(2*ss,0);x.lineTo(7*ss,0);x.bezierCurveTo(8*ss,-25*ss,9*ss,-50*ss,1*ss,-54*ss);x.closePath();x.fill();}
+];
+var crCv=document.createElement('canvas');crCv.width=2048;crCv.height=512;var crCtx=crCv.getContext('2d');
+var sp=2048/${c.crowdDensity};
+for(var ci=0;ci<${c.crowdDensity};ci++){crCtx.save();crCtx.translate(ci*sp+sp/2+(Math.random()-.5)*sp*.4,512);crCtx.fillStyle='rgba(0,0,0,'+(0.55+Math.random()*.4)+')';SIL[Math.floor(Math.random()*SIL.length)](crCtx,1.2+Math.random()*1.4);crCtx.restore();}
+for(var ci=0;ci<Math.round(${c.crowdDensity}*.6);ci++){crCtx.save();crCtx.translate(ci*(2048/(${c.crowdDensity}*.6))+(Math.random()-.5)*30,512-20-Math.random()*30);crCtx.fillStyle='rgba(0,0,0,'+(0.2+Math.random()*.25)+')';SIL[Math.floor(Math.random()*SIL.length)](crCtx,0.7+Math.random()*.8);crCtx.restore();}
 var crTex=new THREE.CanvasTexture(crCv);crTex.wrapS=THREE.RepeatWrapping;
 var crGeo=new THREE.CylinderGeometry(${c.crowdDist},${c.crowdDist},4,48,1,true);
 var crMesh=new THREE.Mesh(crGeo,new THREE.MeshBasicMaterial({map:crTex,side:THREE.BackSide,transparent:true,fog:false,depthWrite:false}));
