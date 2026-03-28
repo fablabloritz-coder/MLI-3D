@@ -291,6 +291,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Intensité</label><div class="sr"><input type="range" id="bloomI" min="1" max="30" value="8"><span class="v" id="bloomIV">0.8</span></div></div>
 <div class="tr"><span>Profondeur de champ</span><button class="tg" id="togDof" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Flou</label><div class="sr"><input type="range" id="dofAp" min="1" max="50" value="15"><span class="v" id="dofApV">1.5</span></div></div>
+<div class="f"><label>Brouillard (profondeur)</label><div class="sr"><input type="range" id="fogD" min="0" max="50" value="12"><span class="v" id="fogDV">12</span></div></div>
 <div class="tr"><span>Barres cinéma</span><button class="tg on" id="togCine" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Hauteur</label><div class="sr"><input type="range" id="cineH" min="2" max="12" value="5"><span class="v" id="cineHV">5%</span></div></div>
 <div class="tr"><span>Grain pellicule</span><button class="tg on" id="togGrain" onclick="this.classList.toggle('on');U()"></button></div>
@@ -466,7 +467,7 @@ window.getConfig=()=>({
   mat:S.curMat,
   hdri:$('hdri').value,hdriBg:$('togHdriBg').classList.contains('on'),hdriInt:+$('hdriInt').value/10,
   bloom:$('togBloom').classList.contains('on'),bloomI:+$('bloomI').value/10,
-  dof:$('togDof').classList.contains('on'),dofAp:+$('dofAp').value/10,
+  dof:$('togDof').classList.contains('on'),dofAp:+$('dofAp').value/10,fogD:+$('fogD').value/1000,
   txtAnim:$('txtAnim').value,animDur:+$('animDur').value/10,
   cine:$('togCine').classList.contains('on'),cineH:+$('cineH').value,
   grain:$('togGrain').classList.contains('on'),vig:$('togVig').classList.contains('on'),
@@ -932,9 +933,9 @@ function U(){
   loadHDRI(c.hdri);
   if(c.hdri){
     if(c.hdriBg&&scene.environment){scene.background=scene.environment;scene.fog.density=0;}
-    else{scene.background=null;scene.fog.density=0.012;}
+    else{scene.background=null;scene.fog.density=(c.fogD||0.012);}
     R.toneMappingExposure=c.gExp*c.hdriInt;
-  }else{scene.background=null;scene.fog.density=0.012;R.toneMappingExposure=c.gExp;}
+  }else{scene.background=null;scene.fog.density=(c.fogD||0.012);R.toneMappingExposure=c.gExp;}
 
   // Logo
   if(logoEl&&logoEl.parentNode)logoEl.parentNode.removeChild(logoEl);
@@ -962,7 +963,7 @@ function U(){
   $('cLookYV').textContent=c.cLookY.toFixed(1);$('cutDurV').textContent=c.cutDur.toFixed(0)+'s';
   $('bloomIV').textContent=c.bloomI.toFixed(1);$('cineHV').textContent=c.cineH+'%';
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
-  $('dofApV').textContent=c.dofAp.toFixed(1);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
+  $('dofApV').textContent=c.dofAp.toFixed(1);$('fogDV').textContent=Math.round(c.fogD*1000);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
   $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';$('vizScaleV').textContent=c.vizScale+'%';
   $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';$('bgScaleV').textContent=c.bgScale+'%';$('bgGapHV').textContent=c.bgGapH+'px';$('bgGapVV').textContent=c.bgGapV+'px';$('bgBlurV').textContent=c.bgBlur;$('crowdDensityV').textContent=c.crowdDensity;$('crowdScaleV').textContent=c.crowdScale+'%';$('crowdGapV').textContent=c.crowdGap;$('crowdHeightV').textContent=c.crowdHeight;$('crowdDistV').textContent=c.crowdDist;$('flashFreqV').textContent=c.flashFreq;$('flashPowV').textContent=c.flashPow.toFixed(1);
 
@@ -1568,6 +1569,7 @@ function loadC_fromObj(c){
   }
   if(c.gExp!=null)$('gExp').value=Math.round(c.gExp*10);
   if(c.pulseBright!=null)$('pulseBright').value=Math.round(c.pulseBright*10);
+  if(c.fogD!=null)$('fogD').value=Math.round(c.fogD*1000);
   if(c.flashPow!=null)$('flashPow').value=Math.round(c.flashPow*10);
   if(c.pulseDecay!=null)$('pulseDecay').value=Math.round(c.pulseDecay*100);
   if(c.keyI!=null)$('kI').value=Math.round(c.keyI*10);if(c.kDist!=null)$('kDist').value=c.kDist;
@@ -1817,7 +1819,7 @@ ${c.dof?`<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/sha
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/BokehPass.js"><\/script>`:''}
 <script>
 var MATS={bronze:new THREE.MeshStandardMaterial({color:0x8B7355,roughness:.5,metalness:.75}),marble:new THREE.MeshStandardMaterial({color:0xf0ebe3,roughness:.25,metalness:.02}),chrome:new THREE.MeshStandardMaterial({color:0xcccccc,roughness:.05,metalness:1}),gold:new THREE.MeshStandardMaterial({color:0xd4a843,roughness:.3,metalness:.9}),matte:new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.95,metalness:0})};
-var scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x${bgH},${c.hdriBg&&c.hdri?'0':'.025'});
+var scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x${bgH},${c.hdriBg&&c.hdri?'0':c.fogD||0.012});
 var camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.01,500);
 var R=new THREE.WebGLRenderer({antialias:true});R.setSize(innerWidth,innerHeight);R.setPixelRatio(1);
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=${c.hdri?c.gExp*c.hdriInt:c.gExp};R.outputEncoding=THREE.sRGBEncoding;R.setClearColor(0x${bgH},${S.bgURL?0:1});
