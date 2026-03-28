@@ -657,7 +657,19 @@ function loadModelSlot(slotIdx,buf,type){
     sl.baseScale=4/sz.y;m.scale.setScalar(sl.baseScale);
     const b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());
     m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;
-    m.traverse(c=>{if(c.isMesh){c.castShadow=c.receiveShadow=true;sl.origMats.push({mesh:c,mat:c.material.clone()});}});
+    m.traverse(c=>{if(c.isMesh){
+      c.castShadow=c.receiveShadow=true;
+      // Fix transparency from GLTF materials
+      const mat=c.material;
+      if(mat){
+        if(mat.transparent||mat.opacity<1||mat.alphaMap||mat.alphaTest>0){
+          mat.transparent=true;mat.depthWrite=false;
+        }
+        // Handle double-sided materials
+        if(mat.side===undefined)mat.side=THREE.FrontSide;
+      }
+      sl.origMats.push({mesh:c,mat:c.material.clone()});
+    }});
     gr.add(m);
     updateSceneBounds();
     if(g.animations&&g.animations.length>0){
@@ -1843,7 +1855,7 @@ if(mb&&mType==='stl'){
   mesh.castShadow=mesh.receiveShadow=true;G.add(mesh);
   var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;
   ${matCode}
-} else if(mb){new THREE.GLTFLoader().parse(mb,'',function(g){var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());var bsc=4/sz.y;m.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;}});G.add(m);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;if(g.animations&&g.animations.length>0){mixer=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}});} else{}
+} else if(mb){new THREE.GLTFLoader().parse(mb,'',function(g){var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());var bsc=4/sz.y;m.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;if(c.material&&(c.material.transparent||c.material.opacity<1||c.material.alphaMap)){c.material.transparent=true;c.material.depthWrite=false;}}});G.add(m);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;if(g.animations&&g.animations.length>0){mixer=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}});} else{}
 var fl=new THREE.Mesh(new THREE.CircleGeometry(20,64),new THREE.MeshStandardMaterial({color:parseInt('${c.floorC}'.slice(1),16),roughness:${c.reflectFloor?'.05':'.9'},metalness:${c.reflectFloor?'.95':'0'}}));fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;fl.visible=${c.showFloor&&!(c.hdriBg&&c.hdri)};scene.add(fl);scene.add(G);
 // Load extra model slots (1 and 2)
 ${[1,2].map(si=>{
@@ -1867,7 +1879,7 @@ ${[1,2].map(si=>{
       m.scale.setScalar(4/sz.y*${sc.scale});
       var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());
       m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;
-      m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;}});grp.add(m);
+      m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;if(c.material&&(c.material.transparent||c.material.opacity<1||c.material.alphaMap)){c.material.transparent=true;c.material.depthWrite=false;}}});grp.add(m);
       if(g.animations&&g.animations.length>0){var mx=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mx.clipAction(cl).play();});}
     });
   }
