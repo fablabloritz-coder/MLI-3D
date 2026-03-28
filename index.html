@@ -486,8 +486,8 @@ window.getConfig=()=>({
 
 // ═══ THREE.JS ═══
 const pvE=$('pv'),scene=new THREE.Scene();
-scene.fog=new THREE.FogExp2(0x08080a,.025);
-const cam=new THREE.PerspectiveCamera(35,1,.1,100);
+scene.fog=new THREE.FogExp2(0x08080a,.012);
+const cam=new THREE.PerspectiveCamera(35,1,.01,500);
 const R=new THREE.WebGLRenderer({antialias:true});
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
 R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=.85;R.outputEncoding=THREE.sRGBEncoding;
@@ -932,9 +932,9 @@ function U(){
   loadHDRI(c.hdri);
   if(c.hdri){
     if(c.hdriBg&&scene.environment){scene.background=scene.environment;scene.fog.density=0;}
-    else{scene.background=null;scene.fog.density=0.025;}
+    else{scene.background=null;scene.fog.density=0.012;}
     R.toneMappingExposure=c.gExp*c.hdriInt;
-  }else{scene.background=null;scene.fog.density=0.025;R.toneMappingExposure=c.gExp;}
+  }else{scene.background=null;scene.fog.density=0.012;R.toneMappingExposure=c.gExp;}
 
   // Logo
   if(logoEl&&logoEl.parentNode)logoEl.parentNode.removeChild(logoEl);
@@ -1818,7 +1818,7 @@ ${c.dof?`<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/sha
 <script>
 var MATS={bronze:new THREE.MeshStandardMaterial({color:0x8B7355,roughness:.5,metalness:.75}),marble:new THREE.MeshStandardMaterial({color:0xf0ebe3,roughness:.25,metalness:.02}),chrome:new THREE.MeshStandardMaterial({color:0xcccccc,roughness:.05,metalness:1}),gold:new THREE.MeshStandardMaterial({color:0xd4a843,roughness:.3,metalness:.9}),matte:new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.95,metalness:0})};
 var scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x${bgH},${c.hdriBg&&c.hdri?'0':'.025'});
-var camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.1,100);
+var camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.01,500);
 var R=new THREE.WebGLRenderer({antialias:true});R.setSize(innerWidth,innerHeight);R.setPixelRatio(1);
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=${c.hdri?c.gExp*c.hdriInt:c.gExp};R.outputEncoding=THREE.sRGBEncoding;R.setClearColor(0x${bgH},${S.bgURL?0:1});
 
