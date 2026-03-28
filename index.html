@@ -305,7 +305,11 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="cat-h"><span class="cat-ico">👥</span><span class="cat-lbl">Foule & Paparazzi</span><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="tr"><span>Silhouettes de foule</span><button class="tg" id="togCrowd" onclick="this.classList.toggle('on');U()"></button></div>
-<div class="f"><label>Densité de la foule</label><div class="sr"><input type="range" id="crowdDensity" min="20" max="120" value="60"><span class="v" id="crowdDensityV">60</span></div></div>
+<div class="st">Silhouette personnalisée</div>
+<div id="crowdDrop" class="drop" style="margin-bottom:4px"><div class="lb">Image silhouette (<strong>.svg / .png</strong>)</div><input type="file" accept=".svg,.png,.webp,image/svg+xml,image/png" style="display:none" id="crowdIn"></div>
+<div class="fh" style="text-align:left;margin-bottom:6px;">Taille recommandée : <strong>largeur 200-600px, fond transparent</strong>. La silhouette sera répétée tout autour. Sans image, les silhouettes intégrées sont utilisées.</div>
+<div class="f"><label>Densité (nombre de répétitions)</label><div class="sr"><input type="range" id="crowdDensity" min="5" max="120" value="60"><span class="v" id="crowdDensityV">60</span></div></div>
+<div class="f"><label>Hauteur de la foule</label><div class="sr"><input type="range" id="crowdHeight" min="1" max="10" value="4"><span class="v" id="crowdHeightV">4</span></div></div>
 <div class="f"><label>Distance de la foule</label><div class="sr"><input type="range" id="crowdDist" min="5" max="20" value="10"><span class="v" id="crowdDistV">10</span></div></div>
 <div class="tr"><span>Flashes paparazzi</span><button class="tg" id="togFlash" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Fréquence des flashes</label><div class="sr"><input type="range" id="flashFreq" min="1" max="20" value="6"><span class="v" id="flashFreqV">6</span></div></div>
@@ -470,7 +474,7 @@ window.getConfig=()=>({
   showTrackName:$('togTrackName').classList.contains('on'),audioURL:S.audioURL,
   linePos:+$('linePos').value,
   bgAnim:$('bgAnim').value,bgOpacity:+$('bgOpacity').value,bgMode:$('bgMode').value,bgScale:+$('bgScale').value,bgGapH:+$('bgGapH').value,bgGapV:+$('bgGapV').value,bgBlur:+$('bgBlur').value,
-  crowd:$('togCrowd').classList.contains('on'),crowdDensity:+$('crowdDensity').value,crowdDist:+$('crowdDist').value,
+  crowd:$('togCrowd').classList.contains('on'),crowdDensity:+$('crowdDensity').value,crowdHeight:+$('crowdHeight').value,crowdDist:+$('crowdDist').value,
   flash:$('togFlash').classList.contains('on'),flashFreq:+$('flashFreq').value,flashPow:+$('flashPow').value/10,
 });
 
@@ -932,7 +936,7 @@ function U(){
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
   $('wmSzV').textContent=c.wmSz;$('wmOpV').textContent=c.wmOp+'%';$('aVolV').textContent=c.audioVol+'%';$('vizScaleV').textContent=c.vizScale+'%';
-  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';$('bgScaleV').textContent=c.bgScale+'%';$('bgGapHV').textContent=c.bgGapH+'px';$('bgGapVV').textContent=c.bgGapV+'px';$('bgBlurV').textContent=c.bgBlur;$('crowdDensityV').textContent=c.crowdDensity;$('crowdDistV').textContent=c.crowdDist;$('flashFreqV').textContent=c.flashFreq;$('flashPowV').textContent=c.flashPow.toFixed(1);
+  $('liveSzV').textContent=c.liveSz;$('dustCountV').textContent=c.dustCount;$('dustSizeV').textContent=c.dustSize*100;$('pulseForceV').textContent=c.pulseForce+'%';$('pulseBrightV').textContent=c.pulseBright.toFixed(1);$('pulseDecayV').textContent=Math.round(c.pulseDecay*100)+'%';$('linePosV').textContent=c.linePos+'%';$('bgOpacityV').textContent=c.bgOpacity+'%';$('bgScaleV').textContent=c.bgScale+'%';$('bgGapHV').textContent=c.bgGapH+'px';$('bgGapVV').textContent=c.bgGapV+'px';$('bgBlurV').textContent=c.bgBlur;$('crowdDensityV').textContent=c.crowdDensity;$('crowdHeightV').textContent=c.crowdHeight;$('crowdDistV').textContent=c.crowdDist;$('flashFreqV').textContent=c.flashFreq;$('flashPowV').textContent=c.flashPow.toFixed(1);
 
   // Watermark
   const wm=$('wmOv');
@@ -1021,56 +1025,78 @@ const CROWD_SILHOUETTES=[
     ctx.lineTo(4*ss,0);ctx.lineTo(11*ss,0);ctx.bezierCurveTo(13*ss,-42*ss,14*ss,-65*ss,2*ss,-87*ss);ctx.closePath();ctx.fill();}
 ];
 
-function buildCrowdTexture(density){
+function buildCrowdTexture(density,customImg){
   const cv=document.createElement('canvas');cv.width=2048;cv.height=512;
   const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,2048,512);
   const spacing=2048/density;
-  for(let i=0;i<density;i++){
-    const x=i*spacing+spacing/2+(Math.random()-0.5)*spacing*0.4;
-    const baseScale=1.2+Math.random()*1.4;// size variation
-    const silIdx=Math.floor(Math.random()*CROWD_SILHOUETTES.length);
-    const alpha=0.55+Math.random()*0.4;
-    ctx.save();
-    ctx.translate(x,512);
-    ctx.fillStyle=`rgba(0,0,0,${alpha})`;
-    CROWD_SILHOUETTES[silIdx](ctx,baseScale);
-    ctx.restore();
-  }
-  // Second row behind (smaller, more transparent)
-  for(let i=0;i<Math.round(density*0.6);i++){
-    const x=i*(2048/(density*0.6))+(Math.random()-0.5)*30;
-    const baseScale=0.7+Math.random()*0.8;
-    const silIdx=Math.floor(Math.random()*CROWD_SILHOUETTES.length);
-    ctx.save();
-    ctx.translate(x,512-20-Math.random()*30);// offset up = "behind"
-    ctx.fillStyle=`rgba(0,0,0,${0.2+Math.random()*0.25})`;
-    CROWD_SILHOUETTES[silIdx](ctx,baseScale);
-    ctx.restore();
+  if(customImg){
+    // Custom image repeated
+    for(let i=0;i<density;i++){
+      const x=i*spacing+spacing/2-spacing*0.3;
+      const scaleVar=0.8+Math.random()*0.5;
+      const imgW=spacing*0.6*scaleVar;
+      const imgH=imgW*(customImg.height/customImg.width);
+      const alpha=0.5+Math.random()*0.45;
+      ctx.save();ctx.globalAlpha=alpha;
+      ctx.drawImage(customImg,x,512-imgH,imgW,imgH);
+      ctx.restore();
+    }
+    // Back row
+    for(let i=0;i<Math.round(density*0.4);i++){
+      const x=i*(2048/(density*0.4))+(Math.random()-0.5)*40;
+      const scaleVar=0.4+Math.random()*0.4;
+      const imgW=spacing*0.6*scaleVar;
+      const imgH=imgW*(customImg.height/customImg.width);
+      ctx.save();ctx.globalAlpha=0.15+Math.random()*0.2;
+      ctx.drawImage(customImg,x,512-imgH-15-Math.random()*25,imgW,imgH);
+      ctx.restore();
+    }
+  }else{
+    // Built-in SVG silhouettes
+    for(let i=0;i<density;i++){
+      const x=i*spacing+spacing/2+(Math.random()-0.5)*spacing*0.4;
+      const baseScale=1.2+Math.random()*1.4;
+      const silIdx=Math.floor(Math.random()*CROWD_SILHOUETTES.length);
+      const alpha=0.55+Math.random()*0.4;
+      ctx.save();ctx.translate(x,512);
+      ctx.fillStyle=`rgba(0,0,0,${alpha})`;
+      CROWD_SILHOUETTES[silIdx](ctx,baseScale);
+      ctx.restore();
+    }
+    for(let i=0;i<Math.round(density*0.6);i++){
+      const x=i*(2048/(density*0.6))+(Math.random()-0.5)*30;
+      const baseScale=0.7+Math.random()*0.8;
+      const silIdx=Math.floor(Math.random()*CROWD_SILHOUETTES.length);
+      ctx.save();ctx.translate(x,512-20-Math.random()*30);
+      ctx.fillStyle=`rgba(0,0,0,${0.2+Math.random()*0.25})`;
+      CROWD_SILHOUETTES[silIdx](ctx,baseScale);
+      ctx.restore();
+    }
   }
   return cv;
 }
 
 function updateCrowd(c){
   if(c.crowd){
-    const key=c.crowdDensity+'_'+c.crowdDist;
+    const h=c.crowdHeight||4;
+    const key=c.crowdDensity+'_'+c.crowdDist+'_'+h+'_'+(S.crowdURL||'default');
     if(key!==crowdCacheKey||!crowdMesh){
       crowdCacheKey=key;
       if(crowdMesh){scene.remove(crowdMesh);crowdMesh.geometry.dispose();crowdMesh.material.dispose();}
-      const cv=buildCrowdTexture(c.crowdDensity);
+      const cv=buildCrowdTexture(c.crowdDensity,S._crowdImg||null);
       const tex=new THREE.CanvasTexture(cv);
       tex.wrapS=THREE.RepeatWrapping;
-      const geo=new THREE.CylinderGeometry(c.crowdDist,c.crowdDist,4,48,1,true);
+      const geo=new THREE.CylinderGeometry(c.crowdDist,c.crowdDist,h,48,1,true);
       const mat=new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,fog:false,depthWrite:false});
       crowdMesh=new THREE.Mesh(geo,mat);
-      crowdMesh.position.y=1.5;// bottom at ground level
+      crowdMesh.position.y=h/2-0.5;
       scene.add(crowdMesh);
     }
     crowdMesh.visible=true;
   }else{
     if(crowdMesh)crowdMesh.visible=false;
   }
-  // Flash lights pool
   if(c.flash){
     while(flashLights.length<8){
       const fl=new THREE.PointLight(0xffffff,0,c.crowdDist*1.5);
@@ -1396,6 +1422,15 @@ sD($('pDrop'),$('pIn'),f=>{const r=new FileReader();r.onload=e=>{
   aRB($('pDrop'),()=>{S.particleURL=null;updatePtsTex();$('pDrop').classList.remove('ld');$('pDrop').querySelector('.lb').innerHTML='Image particule (<strong>.png</strong>) — optionnel';const b=$('pDrop').querySelector('.rb');if(b)b.remove();});
 };r.readAsDataURL(f);});
 
+// Crowd silhouette drop
+sD($('crowdDrop'),$('crowdIn'),f=>{const r=new FileReader();r.onload=e=>{
+  S.crowdURL=e.target.result;S._crowdImg=null;crowdCacheKey='';
+  // Preload image
+  const img=new Image();img.src=e.target.result;img.onload=()=>{S._crowdImg=img;crowdCacheKey='';U();};
+  $('crowdDrop').classList.add('ld');$('crowdDrop').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
+  aRB($('crowdDrop'),()=>{S.crowdURL=null;S._crowdImg=null;crowdCacheKey='';$('crowdDrop').classList.remove('ld');$('crowdDrop').querySelector('.lb').innerHTML='Image silhouette (<strong>.svg / .png</strong>)';const b=$('crowdDrop').querySelector('.rb');if(b)b.remove();U();});
+  U();};r.readAsDataURL(f);});
+
 // Audio drop
 sD($('aDrop'),$('aIn'),f=>{const r=new FileReader();r.onload=e=>{
   S.audioURL=e.target.result;S.audioName=f.name;
@@ -1435,7 +1470,7 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdDist:'crowdDist',flashFreq:'flashFreq',flashPow:'flashPow',dustSize:'dustSize'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',bloomI:'bloomI',dofAp:'dofAp',cineH:'cineH',hdri:'hdri',hdriInt:'hdriInt',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',animDur:'animDur',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',cutDur:'cutDur',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',flashPow:'flashPow',dustSize:'dustSize'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
   if(c.slots&&c.slots[0]){
@@ -1796,13 +1831,23 @@ function(x,s){x.beginPath();x.ellipse(0,-85*s,6*s,7*s,0,0,Math.PI*2);x.fill();x.
 function(x,s){var ss=s*.7;x.beginPath();x.ellipse(0,-60*ss,5*ss,6*ss,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(-1*ss,-54*ss);x.bezierCurveTo(-9*ss,-50*ss,-10*ss,-35*ss,-8*ss,-20*ss);x.lineTo(-7*ss,0);x.lineTo(-2*ss,0);x.lineTo(-1*ss,-20*ss);x.lineTo(1*ss,-20*ss);x.lineTo(2*ss,0);x.lineTo(7*ss,0);x.bezierCurveTo(8*ss,-25*ss,9*ss,-50*ss,1*ss,-54*ss);x.closePath();x.fill();}
 ];
 var crCv=document.createElement('canvas');crCv.width=2048;crCv.height=512;var crCtx=crCv.getContext('2d');
+${S.crowdURL?`
+// Custom crowd image
+var crImg=new Image();crImg.src='${S.crowdURL}';
+crImg.onload=function(){
+  var sp=2048/${c.crowdDensity};
+  for(var ci=0;ci<${c.crowdDensity};ci++){var sx=0.8+Math.random()*0.5;var iw=sp*0.6*sx;var ih=iw*(crImg.height/crImg.width);crCtx.save();crCtx.globalAlpha=0.5+Math.random()*0.45;crCtx.drawImage(crImg,ci*sp+sp/2-iw/2,512-ih,iw,ih);crCtx.restore();}
+  for(var ci=0;ci<Math.round(${c.crowdDensity}*0.4);ci++){var sx=0.4+Math.random()*0.4;var iw=sp*0.6*sx;var ih=iw*(crImg.height/crImg.width);crCtx.save();crCtx.globalAlpha=0.15+Math.random()*0.2;crCtx.drawImage(crImg,ci*(2048/(${c.crowdDensity}*0.4))+(Math.random()-0.5)*40,512-ih-15-Math.random()*25,iw,ih);crCtx.restore();}
+  crTex.needsUpdate=true;
+};`:`
 var sp=2048/${c.crowdDensity};
 for(var ci=0;ci<${c.crowdDensity};ci++){crCtx.save();crCtx.translate(ci*sp+sp/2+(Math.random()-.5)*sp*.4,512);crCtx.fillStyle='rgba(0,0,0,'+(0.55+Math.random()*.4)+')';SIL[Math.floor(Math.random()*SIL.length)](crCtx,1.2+Math.random()*1.4);crCtx.restore();}
 for(var ci=0;ci<Math.round(${c.crowdDensity}*.6);ci++){crCtx.save();crCtx.translate(ci*(2048/(${c.crowdDensity}*.6))+(Math.random()-.5)*30,512-20-Math.random()*30);crCtx.fillStyle='rgba(0,0,0,'+(0.2+Math.random()*.25)+')';SIL[Math.floor(Math.random()*SIL.length)](crCtx,0.7+Math.random()*.8);crCtx.restore();}
+`}
 var crTex=new THREE.CanvasTexture(crCv);crTex.wrapS=THREE.RepeatWrapping;
-var crGeo=new THREE.CylinderGeometry(${c.crowdDist},${c.crowdDist},4,48,1,true);
+var crGeo=new THREE.CylinderGeometry(${c.crowdDist},${c.crowdDist},${c.crowdHeight||4},48,1,true);
 var crMesh=new THREE.Mesh(crGeo,new THREE.MeshBasicMaterial({map:crTex,side:THREE.BackSide,transparent:true,fog:false,depthWrite:false}));
-crMesh.position.y=1.5;scene.add(crMesh);`:''}
+crMesh.position.y=${(c.crowdHeight||4)/2-0.5};scene.add(crMesh);`:''}
 ${c.flash?`
 // Paparazzi flashes
 var fLts=[],fTms=[];for(var fi=0;fi<8;fi++){var fl=new THREE.PointLight(0xffffff,0,${c.crowdDist*1.5});fl.position.set(0,2,0);scene.add(fl);fLts.push(fl);fTms.push(0);}
