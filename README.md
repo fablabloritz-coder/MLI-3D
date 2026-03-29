@@ -100,7 +100,6 @@ La raccourcie lancera (en tout cas avec Google Chrome) la dernière version de M
 ### Où trouver des modèles 3D ?
 
 - **[Sketchfab](https://sketchfab.com)** — Nombreux scans de statues classiques gratuits (télécharger en `.glb`)
-- **[Three D Scans](https://threedscans.com)** — Archive de scans 3D sans restrictions de copyright
 - **[Poly Haven](https://polyhaven.com/models)** — Modèles CC0
 - **Photogrammétrie** — Scannez un objet réel avec Polycam, Luma AI, ou RealityCapture
 
