@@ -99,8 +99,9 @@ La raccourcie lancera (en tout cas avec Google Chrome) la dernière version de M
 
 ### Où trouver des modèles 3D ?
 
-- **[Sketchfab](https://sketchfab.com)** — Nombreux scans de statues classiques gratuits (télécharger en `.glb`)
+- **[Sketchfab](https://sketchfab.com)** — Nombreux modèles gratuits et payants (télécharger en `.glb`)
 - **[Poly Haven](https://polyhaven.com/models)** — Modèles CC0
+- **[Pixabay](https://pixabay.com/3d-models/search/glb/)** - Modèle glb libre de droit
 - **Photogrammétrie** — Scannez un objet réel avec Polycam, Luma AI, ou RealityCapture
 
 ### Où trouver des HDRIs ?
