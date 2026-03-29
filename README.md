@@ -102,6 +102,7 @@ La raccourcie lancera (en tout cas avec Google Chrome) la dernière version de M
 - **[Sketchfab](https://sketchfab.com)** — Nombreux modèles gratuits et payants (télécharger en `.glb`)
 - **[Poly Haven](https://polyhaven.com/models)** — Modèles CC0
 - **[Pixabay](https://pixabay.com/3d-models/search/glb/)** - Modèle glb libre de droit
+- **[Mixamo (Adobe)](https://www.mixamo.com/#/) - Personnage et animation personnalisable
 - **Photogrammétrie** — Scannez un objet réel avec Polycam, Luma AI, ou RealityCapture
 
 ### Où trouver des HDRIs ?
