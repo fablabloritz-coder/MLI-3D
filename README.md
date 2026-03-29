@@ -78,6 +78,14 @@ Ou pour une utilisation en ligne sans installation/téléchargement
 ```
 https://fablabloritz-coder.github.io/MLI-3D/
 ```
+
+Pour encore plus de flexibilité et enlever l'interface inutile d'un nagivateur (barre d'url), il est possible de créer un raccourcie pointant (Cible) vers ceci :
+
+```
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=https://fablabloritz-coder.github.io/MLI-3D
+```
+La raccourcie lancera (en tout cas avec Google Chrome) la dernière version de MLI-3D en mode Application
+
 ### Workflow OBS
 
 1. Ouvrez `index.html` dans Chrome
