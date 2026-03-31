@@ -121,7 +121,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <button class="pb" onclick="selSlot(2,this)">Modèle 3</button>
 </div>
 <div id="slotPanel">
-<div id="sDrop0" class="drop"><div class="lb">Glissez un <strong>.glb / .stl</strong> ici</div><input type="file" accept=".glb,.gltf,.stl" style="display:none" id="sIn0"></div>
+<div id="sDrop0" class="drop"><div class="lb">Glissez un <strong>.glb / .fbx / .stl</strong> ici</div><input type="file" accept=".glb,.gltf,.stl,.fbx" style="display:none" id="sIn0"></div>
 <div class="f" style="margin-top:6px"><label>Échelle</label><div class="sr"><input type="range" id="sScale" min="5" max="1000" value="100"><span class="v" id="sScaleV">100%</span></div></div>
 <div class="f"><label>Orientation (°)</label><div class="sr"><input type="range" id="sRot" min="0" max="360" value="0"><span class="v" id="sRotV">0°</span></div></div>
 <div class="f"><label>Position X</label><div class="sr"><input type="range" id="sPosX" min="-50" max="50" value="0"><span class="v" id="sPosXV">0</span></div></div>
@@ -447,6 +447,10 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.6.10/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/curves/NURBSUtils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/curves/NURBSCurve.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
@@ -670,6 +674,7 @@ let cp=0;
 // ═══ GLB LOADER ═══
 const gltfLoader=new THREE.GLTFLoader();
 const stlLoader=new THREE.STLLoader();
+const fbxLoader=new THREE.FBXLoader();
 
 function loadModelSlot(slotIdx,buf,type){
   const sl=SLOTS[slotIdx],gr=sl.group;
@@ -690,6 +695,31 @@ function loadModelSlot(slotIdx,buf,type){
     gr.add(mesh);
     updateSceneBounds();
     if(slotIdx===0)applyMat(S.curMat);
+    return;
+  }
+
+  if(type==='fbx'){
+    try{
+      const obj=fbxLoader.parse(buf,'');
+      const bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());
+      sl.baseScale=4/Math.max(sz.y,0.01);obj.scale.setScalar(sl.baseScale);
+      const b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());
+      obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;
+      obj.traverse(c=>{if(c.isMesh){
+        c.castShadow=c.receiveShadow=true;
+        if(Array.isArray(c.material))c.material.forEach(m=>{if(m)sl.origMats.push({mesh:c,mat:m.clone()});});
+        else if(c.material)sl.origMats.push({mesh:c,mat:c.material.clone()});
+      }});
+      gr.add(obj);
+      updateSceneBounds();
+      const anims=obj.animations||(obj.userData&&obj.userData.animations)||[];
+      if(anims.length>0){
+        sl.mixer=new THREE.AnimationMixer(obj);sl.clips=anims;sl.activeClip=0;
+        sl.mixer.clipAction(anims[0]).play();
+      }else{sl.clips=[];sl.activeClip=-1;}
+      if(slotIdx===activeSlot)updateAnimSelector(slotIdx);
+      if(slotIdx===0)applyMat(S.curMat);
+    }catch(e){console.error('FBX parse error:',e);alert('Erreur lecture FBX — essayez d\'exporter sans compression depuis votre logiciel 3D.');}
     return;
   }
 
@@ -1511,7 +1541,8 @@ function aRB(d,fn){if(d.querySelector('.rb'))return;const b=document.createEleme
 sD($('sDrop0'),$('sIn0'),f=>{
   const sl=SLOTS[activeSlot];
   sl.name=f.name;
-  sl.type=f.name.toLowerCase().endsWith('.stl')?'stl':'glb';
+  const ext=f.name.toLowerCase().split('.').pop();
+  sl.type=ext==='stl'?'stl':ext==='fbx'?'fbx':'glb';
   const r=new FileReader();
   r.onload=e=>{
     sl.buf=e.target.result;
@@ -1961,6 +1992,10 @@ ${c.showTrackName&&S.audioName?`<div class="tn">${S.audioName.replace(/\.[^.]+$/
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.6.10/umd/index.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/curves/NURBSUtils.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/curves/NURBSCurve.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"><\/script>
 ${(c.bloom||c.dof)?`<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"><\/script>
@@ -2009,6 +2044,7 @@ if(mb&&mType==='stl'){
   mesh.castShadow=mesh.receiveShadow=true;G.add(mesh);
   var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;
   ${matCode}
+} else if(mb&&mType==='fbx'){try{var obj=new THREE.FBXLoader().parse(mb,'');var bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());var bsc=4/Math.max(sz.y,0.01);obj.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;obj.traverse(function(x){if(x.isMesh){x.castShadow=x.receiveShadow=true;}});G.add(obj);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;var fanims=obj.animations||(obj.userData&&obj.userData.animations)||[];if(fanims.length>0){mixer=new THREE.AnimationMixer(obj);fanims.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}}catch(fe){console.error('FBX',fe);}
 } else if(mb){new THREE.GLTFLoader().parse(mb,'',function(g){var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());var bsc=4/sz.y;m.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;if(c.material&&(c.material.transparent||c.material.opacity<1||c.material.alphaMap)){c.material.transparent=true;c.material.depthWrite=false;}}});G.add(m);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;if(g.animations&&g.animations.length>0){mixer=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}});} else{}
 var fl=new THREE.Mesh(new THREE.CircleGeometry(20,64),new THREE.MeshStandardMaterial({color:parseInt('${c.floorC}'.slice(1),16),roughness:${c.reflectFloor?'.05':'.9'},metalness:${c.reflectFloor?'.95':'0'}}));fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;fl.visible=${c.showFloor&&!(c.hdriBg&&c.hdri)};scene.add(fl);scene.add(G);
 // Load extra model slots (1 and 2)
@@ -2027,6 +2063,16 @@ ${[1,2].map(si=>{
     var b2=new THREE.Box3().setFromObject(mesh),c2=b2.getCenter(new THREE.Vector3());
     mesh.position.x-=c2.x;mesh.position.z-=c2.z;mesh.position.y-=b2.min.y;
     mesh.castShadow=mesh.receiveShadow=true;grp.add(mesh);
+  }else if(sl.type==='fbx'){try{
+    var obj=new THREE.FBXLoader().parse(sl.buf,'');
+    var bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());
+    obj.scale.setScalar(4/Math.max(sz.y,0.01)*${sc.scale});
+    var b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());
+    obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;
+    obj.traverse(function(x){if(x.isMesh){x.castShadow=x.receiveShadow=true;}});grp.add(obj);
+    var fa=obj.animations||(obj.userData&&obj.userData.animations)||[];
+    if(fa.length>0){var mx=new THREE.AnimationMixer(obj);fa.forEach(function(cl){mx.clipAction(cl).play();});}
+  }catch(fe){console.error('FBX slot',fe);}
   }else{
     new THREE.GLTFLoader().parse(sl.buf,'',function(g){
       var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());
