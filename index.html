@@ -311,15 +311,27 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="cat-h"><span class="cat-ico">👥</span><span class="cat-lbl">Foule & Paparazzi</span><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="tr"><span>Silhouettes de foule</span><button class="tg" id="togCrowd" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="tr"><span>Mode foule</span><select id="crowdMode" onchange="updateCrowdModeUI();crowd3DCacheKey='';crowdCacheKey='';U()" style="width:130px"><option value="svg">✦ Silhouettes SVG</option><option value="3d">⬡ Modèle 3D</option></select></div>
+<!-- SVG section -->
+<div id="crowdSVGSection">
 <div class="st">Silhouette personnalisée</div>
 <div id="crowdDrop" class="drop" style="margin-bottom:4px"><div class="lb">Image silhouette (<strong>.svg / .png</strong>)</div><input type="file" accept=".svg,.png,.webp,image/svg+xml,image/png" style="display:none" id="crowdIn"></div>
 <div class="fh" style="text-align:left;margin-bottom:6px;">Taille recommandée : <strong>largeur 200-600px, fond transparent</strong>. La silhouette sera répétée tout autour. Sans image, les silhouettes intégrées sont utilisées.</div>
-<div class="f"><label>Nombre de silhouettes</label><div class="sr"><input type="range" id="crowdDensity" min="3" max="80" value="20"><span class="v" id="crowdDensityV">20</span></div></div>
-<div class="f"><label>Taille des silhouettes</label><div class="sr"><input type="range" id="crowdScale" min="10" max="100" value="50"><span class="v" id="crowdScaleV">50%</span></div></div>
 <div class="f"><label>Espacement</label><div class="sr"><input type="range" id="crowdGap" min="0" max="100" value="10"><span class="v" id="crowdGapV">10</span></div></div>
-<div class="f"><label>Hauteur du cylindre</label><div class="sr"><input type="range" id="crowdHeight" min="1" max="10" value="4"><span class="v" id="crowdHeightV">4</span></div></div>
-<div class="f"><label>Distance de la foule</label><div class="sr"><input type="range" id="crowdDist" min="5" max="20" value="10"><span class="v" id="crowdDistV">10</span></div></div>
-<div class="tr"><span>Tailles aléatoires</span><button class="tg" id="togCrowdRand" onclick="this.classList.toggle('on');crowdCacheKey='';U()"></button></div>
+</div>
+<!-- 3D section -->
+<div id="crowd3DSection" style="display:none">
+<div class="st">Modèle 3D foule</div>
+<div id="crowd3DDrop" class="drop" style="margin-bottom:4px"><div class="lb">Modèle foule (<strong>.glb / .fbx / .stl</strong>)</div><input type="file" accept=".glb,.gltf,.fbx,.stl" style="display:none" id="crowd3DIn"></div>
+<div class="tr"><span>Couleur de base</span><input type="color" id="crowd3DColor" value="#888888" oninput="crowd3DCacheKey='';U()" style="width:40px;height:22px;padding:1px;border-radius:4px;border:1px solid var(--ibo);cursor:pointer;background:none;"></div>
+<div class="tr"><span>Variation aléatoire</span><button class="tg" id="togCrowd3DRand" onclick="this.classList.toggle('on');crowd3DCacheKey='';U()"></button></div>
+</div>
+<!-- Shared controls -->
+<div class="f"><label>Nombre</label><div class="sr"><input type="range" id="crowdDensity" min="3" max="80" value="20"><span class="v" id="crowdDensityV">20</span></div></div>
+<div class="f"><label>Taille</label><div class="sr"><input type="range" id="crowdScale" min="10" max="100" value="50"><span class="v" id="crowdScaleV">50%</span></div></div>
+<div class="f"><label>Hauteur</label><div class="sr"><input type="range" id="crowdHeight" min="1" max="10" value="4"><span class="v" id="crowdHeightV">4</span></div></div>
+<div class="f"><label>Distance</label><div class="sr"><input type="range" id="crowdDist" min="5" max="20" value="10"><span class="v" id="crowdDistV">10</span></div></div>
+<div class="tr"><span>Tailles aléatoires</span><button class="tg" id="togCrowdRand" onclick="this.classList.toggle('on');crowdCacheKey='';crowd3DCacheKey='';U()"></button></div>
 <div class="tr"><span>Flashes paparazzi</span><button class="tg" id="togFlash" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Fréquence des flashes</label><div class="sr"><input type="range" id="flashFreq" min="1" max="20" value="6"><span class="v" id="flashFreqV">6</span></div></div>
 <div class="f"><label>Puissance des flashes</label><div class="sr"><input type="range" id="flashPow" min="5" max="50" value="20"><span class="v" id="flashPowV">2.0</span></div></div>
@@ -479,6 +491,7 @@ const S={get modelBuf(){return SLOTS[0].buf;},set modelBuf(v){SLOTS[0].buf=v;},
   get origMats(){return SLOTS[0].origMats;},set origMats(v){SLOTS[0].origMats=v;},
   get baseScale(){return SLOTS[0].baseScale;},set baseScale(v){SLOTS[0].baseScale=v;},
   logoURL:null,bgURL:null,bgType:null,bgName:'',curMat:'original',customHdriBuf:null,customHdriName:'',scenes:[],audioURL:null,audioName:'',particleURL:null,
+  crowd3DBuf:null,crowd3DName:'',crowd3DType:'glb',_crowd3DParts:null,
   _bgVid:null,_bgVidTex:null,_bgImgTex:null,_bgImgSrc:null,_bgAnimCanvas:null,_bgAnimTex:null,_bgAnimType:null,_bgAnimT:0
 };
 
@@ -523,6 +536,7 @@ window.getConfig=()=>({
   linePos:+$('linePos').value,
   bgAnim:$('bgAnim').value,bgOpacity:+$('bgOpacity').value,bgMode:$('bgMode').value,bgScale:+$('bgScale').value,bgGapH:+$('bgGapH').value,bgGapV:+$('bgGapV').value,bgBlur:+$('bgBlur').value,
   crowd:$('togCrowd').classList.contains('on'),crowdRand:$('togCrowdRand').classList.contains('on'),crowdDensity:+$('crowdDensity').value,crowdScale:+$('crowdScale').value,crowdGap:+$('crowdGap').value,crowdHeight:+$('crowdHeight').value,crowdDist:+$('crowdDist').value,
+  crowdMode:$('crowdMode').value,crowd3DColor:$('crowd3DColor').value,crowd3DRand:$('togCrowd3DRand').classList.contains('on'),
   flash:$('togFlash').classList.contains('on'),flashFreq:+$('flashFreq').value,flashPow:+$('flashPow').value/10,
   countdown:$('togCountdown').classList.contains('on'),cdMin:+$('cdMin').value,cdText:$('cdText').value,cdSize:+$('cdSize').value,
   colorFilter:$('colorFilter').value,filterInt:+$('filterInt').value,filterColor:$('filterColor').value,
@@ -1060,7 +1074,7 @@ function U(){
 }
 
 // ═══ CROWD SILHOUETTE & PAPARAZZI FLASHES ═══
-let crowdMesh=null,crowdCacheKey='',flashLights=[],flashTimers=[];
+let crowdMesh=null,crowdCacheKey='',crowd3DMeshes=[],crowd3DCacheKey='',flashLights=[],flashTimers=[];
 
 // 8 realistic silhouette shapes as Path2D drawing functions
 // Each draws a person at (0,0) with bottom at y=0, facing right, ~100px tall
@@ -1190,27 +1204,88 @@ function buildCrowdTexture(density,customImg,rand,scale,gap){
   return cv;
 }
 
-function updateCrowd(c){
-  if(c.crowd){
-    const h=c.crowdHeight||4;
-    const rand=!!c.crowdRand;
-    const sc=c.crowdScale||50,gp=c.crowdGap||10;
-    const key=c.crowdDensity+'_'+c.crowdDist+'_'+h+'_'+rand+'_'+sc+'_'+gp+'_'+(S.crowdURL||'default');
-    if(key!==crowdCacheKey||!crowdMesh){
-      crowdCacheKey=key;
-      if(crowdMesh){scene.remove(crowdMesh);crowdMesh.geometry.dispose();crowdMesh.material.dispose();}
-      const cv=buildCrowdTexture(c.crowdDensity,S._crowdImg||null,rand,sc,gp);
-      const tex=new THREE.CanvasTexture(cv);
-      tex.wrapS=THREE.RepeatWrapping;
-      const geo=new THREE.CylinderGeometry(c.crowdDist,c.crowdDist,h,48,1,true);
-      const mat=new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,fog:false,depthWrite:false});
-      crowdMesh=new THREE.Mesh(geo,mat);
-      crowdMesh.position.y=h/2-0.5;
-      scene.add(crowdMesh);
+function updateCrowdModeUI(){
+  const is3D=$('crowdMode').value==='3d';
+  $('crowdSVGSection').style.display=is3D?'none':'';
+  $('crowd3DSection').style.display=is3D?'':'none';
+}
+
+// ═══ FOULE 3D (InstancedMesh) ═══
+function clearCrowd3D(){
+  crowd3DMeshes.forEach(m=>{scene.remove(m);m.geometry.dispose();if(m.material&&m.material.dispose)m.material.dispose();});
+  crowd3DMeshes=[];
+}
+function parseCrowd3DModel(buf,type){
+  const process=obj=>{
+    const bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());
+    const ns=1/Math.max(sz.y,0.01);obj.scale.setScalar(ns);
+    const b2=new THREE.Box3().setFromObject(obj);obj.position.y-=b2.min.y;
+    obj.updateWorldMatrix(true,true);
+    const parts=[],invRoot=new THREE.Matrix4().copy(obj.matrixWorld).invert();
+    obj.traverse(c=>{if(!c.isMesh)return;
+      const lm=new THREE.Matrix4().multiplyMatrices(invRoot,c.matrixWorld);
+      parts.push({geo:c.geometry,lm:lm});
+    });
+    S._crowd3DParts=parts;crowd3DCacheKey='';U();
+  };
+  if(type==='stl'){const geo=stlLoader.parse(buf);geo.computeVertexNormals();const m=new THREE.Mesh(geo);const o=new THREE.Group();o.add(m);process(o);}
+  else if(type==='fbx'){try{process(fbxLoader.parse(buf,''));}catch(e){console.error('FBX crowd',e);}}
+  else{gltfLoader.parse(buf,'',g=>process(g.scene));}
+}
+function buildCrowd3D(c){
+  if(!S._crowd3DParts||!S._crowd3DParts.length)return;
+  const count=Math.min(c.crowdDensity||20,80),dist=c.crowdDist||10,h=c.crowdHeight||4;
+  const targetH=h*(c.crowdScale||50)/100,rand=!!c.crowdRand;
+  const baseColor=new THREE.Color(c.crowd3DColor||'#888888'),colorRand=!!c.crowd3DRand;
+  const dummy=new THREE.Object3D();
+  S._crowd3DParts.forEach(part=>{
+    const mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.75,metalness:0.1});
+    const iMesh=new THREE.InstancedMesh(part.geo,mat,count);
+    iMesh.castShadow=false;iMesh.frustumCulled=true;
+    for(let i=0;i<count;i++){
+      const angle=(i/count)*Math.PI*2;
+      const r=dist+(rand?(Math.random()-0.5)*dist*0.15:0);
+      dummy.position.set(Math.cos(angle)*r,0,Math.sin(angle)*r);
+      dummy.rotation.set(0,angle+Math.PI+(rand?(Math.random()-0.5)*0.5:0),0);
+      dummy.scale.setScalar(targetH*(rand?0.75+Math.random()*0.5:1));
+      dummy.updateMatrix();
+      iMesh.setMatrixAt(i,new THREE.Matrix4().multiplyMatrices(dummy.matrix,part.lm));
+      const col=new THREE.Color();
+      if(colorRand){const hsl={};baseColor.getHSL(hsl);col.setHSL((hsl.h+(Math.random()-0.5)*0.12+1)%1,Math.min(1,hsl.s*(0.6+Math.random()*0.8)),Math.min(1,hsl.l*(0.6+Math.random()*0.9)));}
+      else col.copy(baseColor);
+      iMesh.setColorAt(i,col);
     }
-    crowdMesh.visible=true;
+    iMesh.instanceMatrix.needsUpdate=true;if(iMesh.instanceColor)iMesh.instanceColor.needsUpdate=true;
+    scene.add(iMesh);crowd3DMeshes.push(iMesh);
+  });
+}
+
+function updateCrowd(c){
+  const is3D=(c.crowdMode==='3d');
+  if(c.crowd){
+    if(is3D){
+      if(crowdMesh)crowdMesh.visible=false;
+      const key3D='3d_'+c.crowdDensity+'_'+c.crowdDist+'_'+c.crowdHeight+'_'+c.crowdScale+'_'+c.crowdRand+'_'+(c.crowd3DColor||'')+'_'+c.crowd3DRand+'_'+(S.crowd3DName||'');
+      if(key3D!==crowd3DCacheKey||!crowd3DMeshes.length){crowd3DCacheKey=key3D;clearCrowd3D();buildCrowd3D(c);}
+      crowd3DMeshes.forEach(m=>m.visible=true);
+    }else{
+      crowd3DMeshes.forEach(m=>m.visible=false);
+      const h=c.crowdHeight||4,rand=!!c.crowdRand,sc=c.crowdScale||50,gp=c.crowdGap||10;
+      const key=c.crowdDensity+'_'+c.crowdDist+'_'+h+'_'+rand+'_'+sc+'_'+gp+'_'+(S.crowdURL||'default');
+      if(key!==crowdCacheKey||!crowdMesh){
+        crowdCacheKey=key;
+        if(crowdMesh){scene.remove(crowdMesh);crowdMesh.geometry.dispose();crowdMesh.material.dispose();}
+        const cv=buildCrowdTexture(c.crowdDensity,S._crowdImg||null,rand,sc,gp);
+        const tex=new THREE.CanvasTexture(cv);tex.wrapS=THREE.RepeatWrapping;
+        const geo=new THREE.CylinderGeometry(c.crowdDist,c.crowdDist,h,48,1,true);
+        const mat=new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,fog:false,depthWrite:false});
+        crowdMesh=new THREE.Mesh(geo,mat);crowdMesh.position.y=h/2-0.5;scene.add(crowdMesh);
+      }
+      crowdMesh.visible=true;
+    }
   }else{
     if(crowdMesh)crowdMesh.visible=false;
+    crowd3DMeshes.forEach(m=>m.visible=false);
   }
   if(c.flash){
     while(flashLights.length<8){
@@ -1598,6 +1673,21 @@ sD($('crowdDrop'),$('crowdIn'),f=>{const r=new FileReader();r.onload=e=>{
   aRB($('crowdDrop'),()=>{S.crowdURL=null;S._crowdImg=null;crowdCacheKey='';$('crowdDrop').classList.remove('ld');$('crowdDrop').querySelector('.lb').innerHTML='Image silhouette (<strong>.svg / .png</strong>)';const b=$('crowdDrop').querySelector('.rb');if(b)b.remove();U();});
   U();};r.readAsDataURL(f);});
 
+// Foule 3D drop
+sD($('crowd3DDrop'),$('crowd3DIn'),f=>{
+  const ext=f.name.toLowerCase().split('.').pop();
+  const type=ext==='stl'?'stl':ext==='fbx'?'fbx':'glb';
+  S.crowd3DName=f.name;S.crowd3DType=type;
+  const r=new FileReader();r.onload=e=>{
+    S.crowd3DBuf=e.target.result;
+    modelStore.set('crowd3D:'+f.name,{buf:e.target.result,type});
+    parseCrowd3DModel(e.target.result,type);
+    $('crowd3DDrop').classList.add('ld');$('crowd3DDrop').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
+  };
+  aRB($('crowd3DDrop'),()=>{S.crowd3DBuf=null;S.crowd3DName='';S._crowd3DParts=null;crowd3DCacheKey='';clearCrowd3D();$('crowd3DDrop').classList.remove('ld');$('crowd3DDrop').querySelector('.lb').innerHTML='Modèle foule (<strong>.glb / .fbx / .stl</strong>)';const b=$('crowd3DDrop').querySelector('.rb');if(b)b.remove();U();});
+  r.readAsArrayBuffer(f);
+});
+
 // Audio drop
 sD($('aDrop'),$('aIn'),f=>{const r=new FileReader();r.onload=e=>{
   S.audioURL=e.target.result;S.audioName=f.name;
@@ -1668,7 +1758,7 @@ function delScn(idx){
 function loadC_fromObj(c){
   if(!c)return;
   // Direct map: config key → element ID (only for values stored AS-IS, no division)
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   // Values stored divided — must multiply back for slider
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
@@ -1717,7 +1807,8 @@ function loadC_fromObj(c){
   }
   // Toggles
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
-  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash','countdown:togCountdown'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash','countdown:togCountdown','crowd3DRand:togCrowd3DRand'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  updateCrowdModeUI();
   // Material
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
   // Custom font
@@ -1749,6 +1840,8 @@ async function exportCfg(){
     const data={config:getCV(),scenes:JSON.parse(localStorage.getItem('3di_scenes')||'[]'),files:{}};
     // Modèles 3D
     for(let si=0;si<3;si++){if(SLOTS[si].buf&&SLOTS[si].name)data.files['slot'+si]={name:SLOTS[si].name,type:SLOTS[si].type||'glb',data:bufToB64(SLOTS[si].buf)};}
+    // Foule 3D
+    if(S.crowd3DBuf&&S.crowd3DName)data.files.crowd3D={name:S.crowd3DName,type:S.crowd3DType||'glb',data:bufToB64(S.crowd3DBuf)};
     // Musique (déjà data URL)
     if(S.audioURL&&S.audioName)data.files.audio={name:S.audioName,data:S.audioURL};
     // HDRI personnalisé
@@ -1790,6 +1883,13 @@ function importCfg(file){
           S.bgURL=data.files.bg.data;S.bgType=data.files.bg.type;S.bgName=data.files.bg.name;
           $('bgDrop').classList.add('ld');$('bgDrop').querySelector('.lb').innerHTML='✓ <strong>'+data.files.bg.name+'</strong>';
         }catch(e2){warn.push('⚠️ Fond "'+data.files.bg.name+'" — erreur');}}
+        // Foule 3D
+        if(data.files.crowd3D){try{
+          const buf=b64ToBuf(data.files.crowd3D.data);
+          S.crowd3DBuf=buf;S.crowd3DName=data.files.crowd3D.name;S.crowd3DType=data.files.crowd3D.type||'glb';
+          parseCrowd3DModel(buf,S.crowd3DType);
+          $('crowd3DDrop').classList.add('ld');$('crowd3DDrop').querySelector('.lb').innerHTML='✓ <strong>'+data.files.crowd3D.name+'</strong>';
+        }catch(e2){warn.push('⚠️ Modèle foule 3D "'+data.files.crowd3D.name+'" — erreur');}}
       }
       if(data.config)loadC_fromObj(data.config);
       if(data.scenes){localStorage.setItem('3di_scenes',JSON.stringify(data.scenes));renderScn();}
