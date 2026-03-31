@@ -467,19 +467,23 @@ const SLOTS=[
   {buf:null,name:'',type:'glb',origMats:[],mixer:null,baseScale:1,group:null}
 ];
 let activeSlot=0;
+// Stockage en mémoire des modèles chargés (nom → {buf, type}) pour le changement de scène
+const modelStore=new Map();
 const S={get modelBuf(){return SLOTS[0].buf;},set modelBuf(v){SLOTS[0].buf=v;},
   get modelName(){return SLOTS[0].name;},set modelName(v){SLOTS[0].name=v;},
   get modelType(){return SLOTS[0].type;},set modelType(v){SLOTS[0].type=v;},
   get origMats(){return SLOTS[0].origMats;},set origMats(v){SLOTS[0].origMats=v;},
   get baseScale(){return SLOTS[0].baseScale;},set baseScale(v){SLOTS[0].baseScale=v;},
-  logoURL:null,bgURL:null,bgType:null,curMat:'original',customHdriBuf:null,scenes:[],audioURL:null,audioName:'',particleURL:null,
+  logoURL:null,bgURL:null,bgType:null,bgName:'',curMat:'original',customHdriBuf:null,customHdriName:'',scenes:[],audioURL:null,audioName:'',particleURL:null,
   _bgVid:null,_bgVidTex:null,_bgImgTex:null,_bgImgSrc:null,_bgAnimCanvas:null,_bgAnimTex:null,_bgAnimType:null,_bgAnimT:0
 };
 
 // Per-slot config from UI
 function getSlotCfg(i){
-  if(i===activeSlot)return{scale:+$('sScale').value/100,rot:+$('sRot').value,posX:+$('sPosX').value/10,posZ:+$('sPosZ').value/10,posY:+$('sPosY').value/10,spin:+$('sSpin').value};
-  return SLOTS[i]._cfg||{scale:1,rot:0,posX:0,posZ:0,spin:0};
+  const sl=SLOTS[i];
+  if(i===activeSlot)return{name:sl.name||'',type:sl.type||'glb',scale:+$('sScale').value/100,rot:+$('sRot').value,posX:+$('sPosX').value/10,posZ:+$('sPosZ').value/10,posY:+$('sPosY').value/10,spin:+$('sSpin').value};
+  const cfg=SLOTS[i]._cfg||{scale:1,rot:0,posX:0,posZ:0,posY:0,spin:0};
+  return{...cfg,name:sl.name||'',type:sl.type||'glb'};
 }
 
 window.getState=()=>({...S,slots:SLOTS});
@@ -1511,6 +1515,7 @@ sD($('sDrop0'),$('sIn0'),f=>{
   const r=new FileReader();
   r.onload=e=>{
     sl.buf=e.target.result;
+    modelStore.set(f.name,{buf:e.target.result,type:sl.type});// mémoriser pour le changement de scène
     sl._cfg={scale:1,rot:0,posX:0,posZ:0,posY:0,spin:0};// reset to defaults
     $('sScale').value=100;$('sRot').value=0;$('sPosX').value=0;$('sPosZ').value=0;$('sPosY').value=0;$('sSpin').value=0;
     loadModelSlot(activeSlot,e.target.result,sl.type);
@@ -1533,7 +1538,7 @@ U();};r.readAsDataURL(f);});
 
 // Custom HDRI drop
 sD($('hdriDrop'),$('hdriIn'),f=>{const r=new FileReader();r.onload=e=>{
-  S.customHdriBuf=e.target.result;curHdriSlug='';// force reload
+  S.customHdriBuf=e.target.result;S.customHdriName=f.name;curHdriSlug='';// force reload
   $('hdriCustomOpt').disabled=false;$('hdriCustomOpt').textContent=f.name;$('hdri').value='custom';
   $('hdriDrop').classList.add('ld');$('hdriDrop').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
   aRB($('hdriDrop'),()=>{S.customHdriBuf=null;curHdriSlug='';$('hdriDrop').classList.remove('ld');$('hdriDrop').querySelector('.lb').innerHTML='HDRI personnalisé (<strong>.hdr</strong>)';const b=$('hdriDrop').querySelector('.rb');if(b)b.remove();$('hdriCustomOpt').disabled=true;$('hdriCustomOpt').textContent='— charger ci-dessous —';if($('hdri').value==='custom')$('hdri').value='';U();});
@@ -1541,7 +1546,7 @@ sD($('hdriDrop'),$('hdriIn'),f=>{const r=new FileReader();r.onload=e=>{
 
 // Background image/video drop
 sD($('bgDrop'),$('bgIn'),f=>{const r=new FileReader();r.onload=e=>{
-  S.bgURL=e.target.result;S.bgType=f.type.startsWith('video')?'video':'image';
+  S.bgURL=e.target.result;S.bgType=f.type.startsWith('video')?'video':'image';S.bgName=f.name;
   $('bgDrop').classList.add('ld');$('bgDrop').querySelector('.lb').innerHTML='✓ <strong>'+f.name+'</strong>';
   aRB($('bgDrop'),()=>{S.bgURL=null;S.bgType=null;$('bgDrop').classList.remove('ld');$('bgDrop').querySelector('.lb').innerHTML='Image ou vidéo de fond (<strong>.jpg/.mp4</strong>)';const b=$('bgDrop').querySelector('.rb');if(b)b.remove();U();});
   U();};f.type.startsWith('video')?r.readAsDataURL(f):r.readAsDataURL(f);});
@@ -1659,7 +1664,25 @@ function loadC_fromObj(c){
     $('sScale').value=Math.round((c.slots[0].scale||1)*100);$('sRot').value=c.slots[0].rot||0;
     $('sPosX').value=Math.round((c.slots[0].posX||0)*10);$('sPosZ').value=Math.round((c.slots[0].posZ||0)*10);$('sPosY').value=Math.round((c.slots[0].posY||0)*10);
     $('sSpin').value=c.slots[0].spin||0;
-    for(let si=0;si<3;si++)if(c.slots[si])SLOTS[si]._cfg=c.slots[si];
+    for(let si=0;si<3;si++){
+      if(c.slots[si]){
+        SLOTS[si]._cfg=c.slots[si];
+        const sname=c.slots[si].name||'';
+        const stype=c.slots[si].type||'glb';
+        if(sname&&SLOTS[si].name!==sname&&modelStore.has(sname)){
+          // Modèle différent et disponible en mémoire → recharger
+          const stored=modelStore.get(sname);
+          SLOTS[si].buf=stored.buf;SLOTS[si].name=sname;SLOTS[si].type=stype;
+          loadModelSlot(si,stored.buf,stype);
+          if(si===activeSlot){$('sDrop0').classList.add('ld');$('sDrop0').querySelector('.lb').innerHTML='✓ <strong>'+sname+'</strong>';}
+        } else if(!sname&&SLOTS[si].buf){
+          // La scène n'a pas de modèle → vider le slot
+          const g=SLOTS[si].group;if(g){while(g.children.length)g.remove(g.children[0]);}
+          SLOTS[si].buf=null;SLOTS[si].name='';
+          if(si===activeSlot){$('sDrop0').classList.remove('ld');$('sDrop0').querySelector('.lb').innerHTML='Glissez un <strong>.glb / .stl</strong> ici';}
+        }
+      }
+    }
   }
   // Toggles
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
@@ -1683,18 +1706,63 @@ function loadC_fromObj(c){
 }
 
 // Config export/import
-function exportCfg(){
-  const data={config:getCV(),scenes:JSON.parse(localStorage.getItem('3di_scenes')||'[]')};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mli3d-config.json';a.click();URL.revokeObjectURL(a.href);
+// ═══ HELPERS FICHIERS ═══
+function bufToB64(buf){const b=new Uint8Array(buf);let s='';const C=8192;for(let i=0;i<b.length;i+=C)s+=String.fromCharCode(...b.subarray(i,Math.min(i+C,b.length)));return btoa(s);}
+function b64ToBuf(b64){const s=atob(b64);const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b.buffer;}
+function showImportWarnings(msgs){const d=document.createElement('div');d.style.cssText='position:fixed;top:20px;right:20px;z-index:9999;background:#1a1a1a;border:1px solid #f90;border-radius:8px;padding:16px;max-width:340px;font-size:.75rem;color:#f90;font-family:monospace;line-height:1.6;';d.innerHTML='<strong>⚠️ Import partiel</strong><br>'+msgs.join('<br>')+'<br><button onclick="this.parentNode.remove()" style="margin-top:8px;background:#333;border:1px solid #555;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;">OK</button>';document.body.appendChild(d);setTimeout(()=>{if(d.parentNode)d.remove();},12000);}
+
+async function exportCfg(){
+  const btn=document.querySelector('[onclick="exportCfg()"]');
+  if(btn){btn._t=btn.textContent;btn.textContent='⏳ Export…';btn.disabled=true;}
+  try{
+    const data={config:getCV(),scenes:JSON.parse(localStorage.getItem('3di_scenes')||'[]'),files:{}};
+    // Modèles 3D
+    for(let si=0;si<3;si++){if(SLOTS[si].buf&&SLOTS[si].name)data.files['slot'+si]={name:SLOTS[si].name,type:SLOTS[si].type||'glb',data:bufToB64(SLOTS[si].buf)};}
+    // Musique (déjà data URL)
+    if(S.audioURL&&S.audioName)data.files.audio={name:S.audioName,data:S.audioURL};
+    // HDRI personnalisé
+    if(S.customHdriBuf&&S.customHdriName)data.files.hdri={name:S.customHdriName,data:bufToB64(S.customHdriBuf)};
+    // Fond image/vidéo (déjà data URL)
+    if(S.bgURL&&S.bgName)data.files.bg={name:S.bgName,type:S.bgType,data:S.bgURL};
+    const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mli3d-full.json';a.click();URL.revokeObjectURL(a.href);
+  }finally{if(btn){btn.textContent=btn._t||'Exporter (.json)';btn.disabled=false;}}
 }
 function importCfg(file){
   if(!file)return;
   const r=new FileReader();r.onload=e=>{
     try{
-      const data=JSON.parse(e.target.result);
+      const data=JSON.parse(e.target.result);const warn=[];
+      if(data.files){
+        // Modèles 3D
+        for(let si=0;si<3;si++){const fd=data.files['slot'+si];if(fd){try{
+          const buf=b64ToBuf(fd.data);
+          SLOTS[si].buf=buf;SLOTS[si].name=fd.name;SLOTS[si].type=fd.type||'glb';
+          modelStore.set(fd.name,{buf,type:fd.type||'glb'});
+          loadModelSlot(si,buf,fd.type||'glb');
+          if(si===activeSlot){$('sDrop0').classList.add('ld');$('sDrop0').querySelector('.lb').innerHTML='✓ <strong>'+fd.name+'</strong>';}
+        }catch(e2){warn.push('⚠️ Modèle "'+fd.name+'" — erreur de chargement');}}}
+        // Musique
+        if(data.files.audio){try{
+          S.audioURL=data.files.audio.data;S.audioName=data.files.audio.name;
+          $('aDrop').classList.add('ld');$('aDrop').querySelector('.lb').innerHTML='✓ <strong>'+data.files.audio.name+'</strong>';
+        }catch(e2){warn.push('⚠️ Musique "'+data.files.audio.name+'" — erreur');}}
+        // HDRI
+        if(data.files.hdri){try{
+          const buf=b64ToBuf(data.files.hdri.data);
+          S.customHdriBuf=buf;S.customHdriName=data.files.hdri.name;curHdriSlug='';
+          $('hdriCustomOpt').disabled=false;$('hdriCustomOpt').textContent=data.files.hdri.name;$('hdri').value='custom';
+          $('hdriDrop').classList.add('ld');$('hdriDrop').querySelector('.lb').innerHTML='✓ <strong>'+data.files.hdri.name+'</strong>';
+        }catch(e2){warn.push('⚠️ HDRI "'+data.files.hdri.name+'" — erreur de chargement');}}
+        // Fond
+        if(data.files.bg){try{
+          S.bgURL=data.files.bg.data;S.bgType=data.files.bg.type;S.bgName=data.files.bg.name;
+          $('bgDrop').classList.add('ld');$('bgDrop').querySelector('.lb').innerHTML='✓ <strong>'+data.files.bg.name+'</strong>';
+        }catch(e2){warn.push('⚠️ Fond "'+data.files.bg.name+'" — erreur');}}
+      }
       if(data.config)loadC_fromObj(data.config);
       if(data.scenes){localStorage.setItem('3di_scenes',JSON.stringify(data.scenes));renderScn();}
+      if(warn.length)showImportWarnings(warn);
     }catch(ex){alert('Fichier de config invalide');}
   };r.readAsText(file);
 }
