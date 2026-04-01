@@ -487,6 +487,10 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
       <button class="pb" id="r11" onclick="setRatio('1-1',this)" title="Carré">1:1</button>
     </div>
   </div>
+  <div style="display:flex;gap:5px;margin-top:7px;">
+    <button id="undoBtn" onclick="undo()" title="Annuler (Ctrl+Z)" style="flex:1;padding:5px;font-size:.65rem;background:var(--ib);border:1px solid var(--ibo);border-radius:var(--r);color:var(--t);cursor:pointer;opacity:.35;pointer-events:none;">↩ Annuler</button>
+    <button id="redoBtn" onclick="redo()" title="Refaire (Ctrl+Y)" style="flex:1;padding:5px;font-size:.65rem;background:var(--ib);border:1px solid var(--ibo);border-radius:var(--r);color:var(--t);cursor:pointer;opacity:.35;pointer-events:none;">↪ Refaire</button>
+  </div>
   <div class="fh">Dans OBS : Capture de fenêtre · Touche F = plein écran · Chrome masque la barre d'URL</div>
 </div>
 </div>
@@ -1241,6 +1245,7 @@ function U(){
     if(wp==='center'){wm.style.top='50%';wm.style.transform='translate(-50%,-50%)';}
   }else{wm.style.display='none';}
   updateCrowd(c);
+  _undoPush();
 }
 
 // ═══ CROWD SILHOUETTE & PAPARAZZI FLASHES ═══
@@ -2123,6 +2128,53 @@ function renderScn(){
 renderScn();
 // Expose scenes for popup
 window.getScenes=()=>JSON.parse(localStorage.getItem('3di_scenes')||'[]');
+
+// ═══ ANNULER / REFAIRE ═══
+const UNDO_MAX=50;
+let _undoStack=[],_redoStack=[],_undoDebounce=null,_undoLocked=false;
+
+function _undoPush(){
+  if(_undoLocked)return;
+  clearTimeout(_undoDebounce);
+  _undoDebounce=setTimeout(()=>{
+    const snap=JSON.stringify(getCV());
+    // Ne pas empiler si identique au dernier snapshot
+    if(_undoStack.length&&_undoStack[_undoStack.length-1]===snap)return;
+    _undoStack.push(snap);
+    if(_undoStack.length>UNDO_MAX)_undoStack.shift();
+    _redoStack=[];// toute nouvelle action efface le redo
+    _updateUndoUI();
+  },600);
+}
+function _undoApply(snap){
+  _undoLocked=true;
+  try{loadC_fromObj(JSON.parse(snap));}finally{_undoLocked=false;}
+}
+function undo(){
+  if(_undoStack.length<2)return;
+  const cur=_undoStack.pop();
+  _redoStack.push(cur);
+  _undoApply(_undoStack[_undoStack.length-1]);
+  _updateUndoUI();
+}
+function redo(){
+  if(!_redoStack.length)return;
+  const snap=_redoStack.pop();
+  _undoStack.push(snap);
+  _undoApply(snap);
+  _updateUndoUI();
+}
+function _updateUndoUI(){
+  $('undoBtn').style.opacity=_undoStack.length>1?'1':'0.35';
+  $('undoBtn').style.pointerEvents=_undoStack.length>1?'auto':'none';
+  $('redoBtn').style.opacity=_redoStack.length?'1':'0.35';
+  $('redoBtn').style.pointerEvents=_redoStack.length?'auto':'none';
+}
+// Ctrl+Z / Ctrl+Shift+Z
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();redo();}
+});
 
 // ═══ ANIMATION ═══
 // Shot sequencer for cuts mode — shuffled, no consecutive repeats
