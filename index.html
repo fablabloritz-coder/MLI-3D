@@ -60,6 +60,10 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 .pf{padding:10px 20px;border-top:1px solid var(--pb);background:var(--p);}
 .launch{width:100%;padding:10px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;border:none;border-radius:var(--r);cursor:pointer;background:var(--a);color:#111;transition:all .3s;}
 .launch:hover{background:#d4b48a;transform:translateY(-1px);}.launch:active{transform:translateY(0);}
+.rec-btn{position:absolute;bottom:12px;right:12px;z-index:25;padding:6px 13px;font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:none;border-radius:var(--r);cursor:pointer;background:rgba(30,30,34,.85);border:1px solid rgba(255,60,60,.4);color:#ff5555;backdrop-filter:blur(6px);transition:all .25s;font-family:'DM Sans',sans-serif;}
+.rec-btn:hover{background:rgba(200,30,30,.85);color:#fff;border-color:#ff3333;}
+.rec-btn.recording{background:rgba(180,20,20,.9);color:#fff;border-color:#ff2222;animation:recpulse 1s ease-in-out infinite;}
+@keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,40,40,.5);}50%{box-shadow:0 0 0 6px rgba(255,40,40,0);}}
 .fh{font-size:.6rem;color:var(--d);text-align:center;margin-top:5px;}
 
 /* PREVIEW */
@@ -470,6 +474,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <div id="pv">
 <div class="pvb">Aperçu en direct</div>
+<button class="rec-btn" id="recBtn" onclick="toggleRec()" title="Enregistrer en .webm">⏺ REC</button>
 <div id="fadeOv" style="position:absolute;inset:0;background:#000;z-index:15;opacity:0;pointer-events:none;transition:opacity 0.8s;"></div>
 <div class="pv-cine pv-ct" id="eCT"></div>
 <div class="pv-cine pv-cb" id="eCB"></div>
@@ -2210,6 +2215,48 @@ function anim(t){
 anim();
 
 // ═══ POPUP ═══
+// ═══ EXPORT VIDÉO ═══
+let _mediaRec=null,_recChunks=[],_recTimer=null,_recSec=0;
+function toggleRec(){
+  if(_mediaRec&&_mediaRec.state==='recording'){stopRec();}else{startRec();}
+}
+function startRec(){
+  const canvas=R.domElement;
+  if(!canvas.captureStream){alert('Votre navigateur ne supporte pas l\'enregistrement vidéo.\nUtilisez Chrome ou Edge.');return;}
+  // Upscale temporaire pour la qualité vidéo
+  const origPR=adaptPR;
+  R.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  const stream=canvas.captureStream(30);
+  const mimeTypes=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const mime=mimeTypes.find(t=>MediaRecorder.isTypeSupported(t))||'video/webm';
+  _mediaRec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8000000});
+  _recChunks=[];
+  _mediaRec.ondataavailable=e=>{if(e.data.size>0)_recChunks.push(e.data);};
+  _mediaRec.onstop=()=>{
+    R.setPixelRatio(origPR);
+    const blob=new Blob(_recChunks,{type:mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='MLI-3D-'+new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')+'.webm';
+    a.click();URL.revokeObjectURL(url);
+    _recChunks=[];_mediaRec=null;
+    clearInterval(_recTimer);_recTimer=null;_recSec=0;
+    const btn=$('recBtn');btn.textContent='⏺ REC';btn.classList.remove('recording');
+  };
+  _mediaRec.start(100);// chunk toutes les 100ms
+  _recSec=0;
+  const btn=$('recBtn');btn.classList.add('recording');
+  _recTimer=setInterval(()=>{
+    _recSec++;
+    const m=Math.floor(_recSec/60).toString().padStart(2,'0');
+    const s=(_recSec%60).toString().padStart(2,'0');
+    btn.textContent='⏹ '+m+':'+s;
+  },1000);
+}
+function stopRec(){
+  if(_mediaRec&&_mediaRec.state==='recording')_mediaRec.stop();
+}
+
 function openPopup(){
   const sw=screen.availWidth,sh=screen.availHeight;
   let w=Math.min(sw-40,1920),h=Math.round(w*9/16);
