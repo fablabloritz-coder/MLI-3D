@@ -612,6 +612,7 @@ window.getConfig=()=>({
   countdown:$('togCountdown').classList.contains('on'),cdMin:+$('cdMin').value,cdText:$('cdText').value,cdSize:+$('cdSize').value,
   colorFilter:$('colorFilter').value,filterInt:+$('filterInt').value,filterColor:$('filterColor').value,
   transType:$('transType').value,transDur:+$('transDur').value/10,
+  viewRatio:typeof _currentRatio!=='undefined'?_currentRatio:'free',
 });
 
 // ═══ THREE.JS ═══
@@ -848,7 +849,7 @@ let envGroup=null,envBounds=null;
 // ═══ GLB LOADER ═══
 const gltfLoader=new THREE.GLTFLoader();
 const stlLoader=new THREE.STLLoader();
-const fbxLoader=new THREE.FBXLoader();
+// FBXLoader : nouvelle instance à chaque parse (évite les conflits d'état interne)
 
 function loadModelSlot(slotIdx,buf,type){
   const sl=SLOTS[slotIdx],gr=sl.group;
@@ -1999,7 +2000,7 @@ function loadC_fromObj(c){
           // La scène n'a pas de modèle → vider le slot
           const g=SLOTS[si].group;if(g){while(g.children.length)g.remove(g.children[0]);}
           SLOTS[si].buf=null;SLOTS[si].name='';
-          if(si===activeSlot){$('sDrop0').classList.remove('ld');$('sDrop0').querySelector('.lb').innerHTML='Glissez un <strong>.glb / .stl</strong> ici';}
+          if(si===activeSlot){$('sDrop0').classList.remove('ld');$('sDrop0').querySelector('.lb').innerHTML='Glissez un <strong>.glb / .fbx / .stl</strong> ici';}
         }
       }
     }
@@ -2009,6 +2010,10 @@ function loadC_fromObj(c){
   ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash','countdown:togCountdown','crowd3DRand:togCrowd3DRand'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
   updateCrowdModeUI();
   updateAppModeUI();
+  // Ratio aperçu
+  if(c.viewRatio&&typeof setRatio==='function'){
+    setRatio(c.viewRatio,document.getElementById('r'+c.viewRatio.replace('-',''))||document.getElementById('rFree'));
+  }
   // Material
   if(c.mat){S.curMat=c.mat;document.querySelectorAll('#matPr .pb').forEach(b=>{b.classList.toggle('ac',b.dataset.mat===c.mat);});applyMat(c.mat);}
   // Custom font
@@ -2046,6 +2051,10 @@ async function exportCfg(){
     if(S.envBuf&&S.envName)data.files.env={name:S.envName,data:bufToB64(S.envBuf)};
     // Musique (déjà data URL)
     if(S.audioURL&&S.audioName)data.files.audio={name:S.audioName,data:S.audioURL};
+    // Logo (data URL)
+    if(S.logoURL)data.files.logo={data:S.logoURL};
+    // Texture particules (data URL)
+    if(S.particleURL)data.files.particle={data:S.particleURL};
     // HDRI personnalisé
     if(S.customHdriBuf&&S.customHdriName)data.files.hdri={name:S.customHdriName,data:bufToB64(S.customHdriBuf)};
     // Fond image/vidéo (déjà data URL)
@@ -2073,6 +2082,16 @@ function importCfg(file){
           S.audioURL=data.files.audio.data;S.audioName=data.files.audio.name;
           $('aDrop').classList.add('ld');$('aDrop').querySelector('.lb').innerHTML='✓ <strong>'+data.files.audio.name+'</strong>';
         }catch(e2){warn.push('⚠️ Musique "'+data.files.audio.name+'" — erreur');}}
+        // Logo
+        if(data.files.logo){try{
+          S.logoURL=data.files.logo.data;
+          $('lDrop').classList.add('ld');$('lDrop').querySelector('.lb').innerHTML='✓ <strong>Logo restauré</strong>';
+        }catch(e2){warn.push('⚠️ Logo — erreur de restauration');}}
+        // Texture particules
+        if(data.files.particle){try{
+          S.particleURL=data.files.particle.data;updatePtsTex();
+          $('pDrop').classList.add('ld');$('pDrop').querySelector('.lb').innerHTML='✓ <strong>Particule restaurée</strong>';
+        }catch(e2){warn.push('⚠️ Texture particules — erreur');}}
         // HDRI
         if(data.files.hdri){try{
           const buf=b64ToBuf(data.files.hdri.data);
@@ -2336,6 +2355,10 @@ function anim(t){
   else R.render(scene,cam);
 }
 anim();
+
+// ═══ INITIALISATIONS AU DÉMARRAGE ═══
+updateCamModeUI();
+setTimeout(()=>{if(_undoStack.length===0){_undoStack.push(JSON.stringify(getCV()));_updateUndoUI();}},200);
 
 // ═══ POPUP ═══
 // ═══ EXPORT VIDÉO ═══
