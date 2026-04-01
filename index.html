@@ -105,7 +105,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </head>
 <body>
 <div id="P">
-<div class="ph" style="position:relative"><h1><span>3D</span>Intro</h1><p>Générateur d'intro live</p><button class="theme-btn" onclick="document.body.classList.toggle('light');this.textContent=document.body.classList.contains('light')?'🌙':'☀️'" title="Mode clair/sombre">☀️</button></div>
+<div class="ph" style="position:relative"><h1><span>MLI</span>-3D</h1><p>Générateur d'intro live</p><button class="theme-btn" onclick="document.body.classList.toggle('light');this.textContent=document.body.classList.contains('light')?'🌙':'☀️'" title="Mode clair/sombre">☀️</button></div>
 <div class="ps">
 
 <!-- 0. PRESETS GLOBAUX -->
@@ -2704,7 +2704,7 @@ ${c.crowd&&c.crowdMode==='3d'?`
   });
 })();
 `:''}
-${c.flash?``
+${c.flash?`
 // Paparazzi flashes
 var fLts=[],fTms=[];for(var fi=0;fi<8;fi++){var fl=new THREE.PointLight(0xffffff,0,${c.crowdDist*1.5});fl.position.set(0,2,0);scene.add(fl);fLts.push(fl);fTms.push(0);}
 function tickF(dt){var dist=${c.crowdDist};for(var i=0;i<fLts.length;i++){fTms[i]-=dt;if(fTms[i]<=0){if(Math.random()<${c.flashFreq}*dt*0.5){var a=Math.random()*Math.PI*2;fLts[i].position.set(Math.sin(a)*dist,1.5+Math.random()*2.5,Math.cos(a)*dist);fLts[i].intensity=${c.flashPow}*(0.7+Math.random()*0.3);fLts[i].distance=dist*1.5;fTms[i]=0.08+Math.random()*0.06;}}else{fLts[i].intensity*=Math.pow(0.01,dt/0.05);}}}
