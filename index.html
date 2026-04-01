@@ -305,8 +305,17 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="f"><label>Distance</label><div class="sr"><input type="range" id="cDst" min="10" max="200" value="80"><span class="v" id="cDstV">80%</span></div></div>
 <div class="f"><label>Point de visée (hauteur)</label><div class="sr"><input type="range" id="cLookY" min="-50" max="50" value="0"><span class="v" id="cLookYV">0</span></div></div>
 <div class="st">Mode</div>
-<div class="f"><label>Type</label><select id="camMode"><option value="continuous" selected>Continu (fluide)</option><option value="cuts">Plans enchaînés (fondu noir)</option></select></div>
-<div class="f"><label>Durée par plan</label><div class="sr"><input type="range" id="cutDur" min="30" max="150" value="80"><span class="v" id="cutDurV">8s</span></div></div>
+<div class="f"><label>Type</label><select id="camMode" onchange="updateCamModeUI()">
+  <option value="continuous" selected>Continu (fluide)</option>
+  <option value="cuts">Plans enchaînés (fondu noir)</option>
+  <option value="orbit">⭕ Orbite statique</option>
+  <option value="travel">↔️ Travelling A→B</option>
+  <option value="handheld">📷 Épaule (handheld)</option>
+</select></div>
+<div class="f" id="cutDurRow"><label>Durée par plan</label><div class="sr"><input type="range" id="cutDur" min="30" max="150" value="80"><span class="v" id="cutDurV">8s</span></div></div>
+<div id="camOrbitRow" style="display:none" class="f"><label>Hauteur orbite</label><div class="sr"><input type="range" id="orbitH" min="-20" max="50" value="15" oninput="U()"><span class="v" id="orbitHV">1.5</span></div></div>
+<div id="camTravelRow" style="display:none" class="f"><label>Amplitude travelling</label><div class="sr"><input type="range" id="travelAmp" min="10" max="200" value="80" oninput="U()"><span class="v" id="travelAmpV">80%</span></div></div>
+<div id="camHandRow" style="display:none" class="f"><label>Intensité tremblement</label><div class="sr"><input type="range" id="handIntensity" min="1" max="20" value="5" oninput="U()"><span class="v" id="handIntensityV">5</span></div></div>
 </div></div>
 
 <!-- 7. EFFETS -->
@@ -545,6 +554,7 @@ window.getConfig=()=>({
   lOrb:+$('lOrb').value,
   camSpd:+$('cSpd').value,camDist:+$('cDst').value,cLookY:+$('cLookY').value/10,
   camMode:$('camMode').value,cutDur:+$('cutDur').value/10,
+  orbitH:+$('orbitH').value/10,travelAmp:+$('travelAmp').value,handIntensity:+$('handIntensity').value,
   mat:S.curMat,
   hdri:$('hdri').value,hdriBg:$('togHdriBg').classList.contains('on'),hdriInt:+$('hdriInt').value/10,
   bloom:$('togBloom').classList.contains('on'),bloomI:+$('bloomI').value/10,
@@ -772,6 +782,15 @@ function getEnvCamPath(preset,el,spd){
 }
 
 // ═══ SPLINE CAMERA ═══
+function updateCamModeUI(){
+  const m=$('camMode').value;
+  $('cutDurRow').style.display=m==='cuts'?'':'none';
+  $('camOrbitRow').style.display=m==='orbit'?'':'none';
+  $('camTravelRow').style.display=m==='travel'?'':'none';
+  $('camHandRow').style.display=m==='handheld'?'':'none';
+}
+// Handheld noise state
+let _hnX=0,_hnY=0,_hnZ=0,_hnVX=0,_hnVY=0,_hnVZ=0;
 function cr(p0,p1,p2,p3,t){const t2=t*t,t3=t2*t;return new THREE.Vector3(.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3),.5*((2*p1.z)+(-p0.z+p2.z)*t+(2*p0.z-5*p1.z+4*p2.z-p3.z)*t2+(-p0.z+3*p1.z-3*p2.z+p3.z)*t3));}
 function es(P,t){const n=P.length-1,ft=((t%1)+1)%1,s=ft*n,i=Math.floor(s),lt=s-i,ix=k=>((k%n)+n)%n;return cr(P[ix(i-1)],P[ix(i)],P[ix(i+1)],P[ix(i+2)],lt);}
 function getWP(d,lookYOff){d/=100;const ws=Math.max(1,mW/2);d*=ws;const cy=mC.y+lookYOff,top=cy+mH/2,cx=mC.x,cz=mC.z;return{p:[new THREE.Vector3(cx+7*d,Math.max(.3,3.5),cz+5*d),new THREE.Vector3(cx+3*d,Math.max(.3,top),cz+2.5*d),new THREE.Vector3(cx+2*d,Math.max(.3,top+.3),cz+4*d),new THREE.Vector3(cx+4.5*d,Math.max(.3,.7),cz+4*d),new THREE.Vector3(cx+1*d,Math.max(.3,.9),cz+6*d),new THREE.Vector3(cx-4*d,Math.max(.3,2.8),cz+4*d),new THREE.Vector3(cx-5.5*d,Math.max(.3,cy),cz+1*d),new THREE.Vector3(cx-4*d,Math.max(.3,6.5),cz-2*d),new THREE.Vector3(cx-1*d,Math.max(.3,5.5),cz-5*d),new THREE.Vector3(cx+3*d,Math.max(.3,3),cz-5*d),new THREE.Vector3(cx+5.5*d,Math.max(.3,cy-.3),cz-3*d),new THREE.Vector3(cx+6*d,Math.max(.3,2.5),cz-1*d),new THREE.Vector3(cx+7*d,Math.max(.3,3.5),cz+5*d)],l:[new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,top-.6,cz+.1),new THREE.Vector3(cx,top-.4,cz),new THREE.Vector3(cx,cy+.8,cz),new THREE.Vector3(cx,cy+1,cz),new THREE.Vector3(cx,cy+.3,cz),new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,cy-.3,cz),new THREE.Vector3(cx,cy+.5,cz),new THREE.Vector3(cx,cy,cz),new THREE.Vector3(cx,cy-.2,cz),new THREE.Vector3(cx,cy+.2,cz),new THREE.Vector3(cx,cy,cz)]};}
@@ -1161,6 +1180,7 @@ function U(){
   $('aIV').textContent=c.ambI.toFixed(1);$('lOrbV').textContent=c.lOrb+'°';
   $('cSpdV').textContent=c.camSpd;$('cDstV').textContent=c.camDist+'%';
   $('cLookYV').textContent=c.cLookY.toFixed(1);$('cutDurV').textContent=c.cutDur.toFixed(0)+'s';
+  $('orbitHV').textContent=c.orbitH.toFixed(1);$('travelAmpV').textContent=c.travelAmp+'%';$('handIntensityV').textContent=c.handIntensity;
   $('bloomIV').textContent=c.bloomI.toFixed(1);$('cineHV').textContent=c.cineH+'%';
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('fogDV').textContent=Math.round(c.fogD*1000);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
@@ -1883,7 +1903,7 @@ function delScn(idx){
 function loadC_fromObj(c){
   if(!c)return;
   // Direct map: config key → element ID (only for values stored AS-IS, no division)
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor',appMode:'appMode',envPreset:'envPreset',envFov:'envFov'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor',appMode:'appMode',envPreset:'envPreset',envFov:'envFov',travelAmp:'travelAmp',handIntensity:'handIntensity'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   // Values stored divided — must multiply back for slider
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
@@ -1905,6 +1925,8 @@ function loadC_fromObj(c){
   if(c.flashPow!=null)$('flashPow').value=Math.round(c.flashPow*10);
   if(c.dustSize!=null)$('dustSize').value=Math.round(c.dustSize*100);
   if(c.transDur!=null){$('transDur').value=Math.round(c.transDur*10);$('transDurV').textContent=c.transDur.toFixed(1)+'s';}
+  if(c.orbitH!=null)$('orbitH').value=Math.round(c.orbitH*10);
+  updateCamModeUI();
   // Slots
   if(c.slots&&c.slots[0]){
     $('sScale').value=Math.round((c.slots[0].scale||1)*100);$('sRot').value=c.slots[0].rot||0;
@@ -2115,6 +2137,31 @@ function anim(t){
     const ec=getEnvCamPath(preset,el,+$('cSpd').value);
     cam.fov=+($('envFov').value||75);cam.updateProjectionMatrix();
     cam.position.copy(ec.pos);cam.lookAt(ec.target);
+  }else if(mode==='orbit'){
+    // Orbite statique : cercle autour de mC à rayon fixe
+    const r=(dist/100)*Math.max(1,mW/2)*1.4;
+    const h=+$('orbitH').value/10;
+    cam.position.set(mC.x+Math.cos(el*spd*6)*r,Math.max(0.2,mC.y+h),mC.z+Math.sin(el*spd*6)*r);
+    cam.lookAt(mC.x,mC.y+lookYOff,mC.z);
+  }else if(mode==='travel'){
+    // Travelling A→B : va-et-vient linéaire
+    const amp=(+$('travelAmp').value/100)*Math.max(1,mW/2)*1.2;
+    const t2=(Math.sin(el*spd*3)+1)/2;// 0→1→0 smooth
+    const baseH=Math.max(0.3,mC.y+lookYOff);
+    cam.position.set(mC.x-amp+t2*amp*2,baseH+Math.sin(t2*Math.PI)*0.3,mC.z+(dist/100)*Math.max(1,mW/2)*0.6);
+    cam.lookAt(mC.x,mC.y+lookYOff*0.5,mC.z);
+  }else if(mode==='handheld'){
+    // Handheld : spline + micro-vibrations organiques
+    const wp=getWP(dist,lookYOff),pos=es(wp.p,cp),lk=es(wp.l,cp);
+    const intensity=(+$('handIntensity').value)*0.001;
+    // Spring-damper noise sur X, Y, Z
+    const spring=0.08,damp=0.72,kick=0.004*intensity*60;
+    _hnVX+=(-_hnX*spring+(Math.random()-.5)*kick);_hnX+=_hnVX;_hnVX*=damp;
+    _hnVY+=(-_hnY*spring+(Math.random()-.5)*kick*0.6);_hnY+=_hnVY;_hnVY*=damp;
+    _hnVZ+=(-_hnZ*spring+(Math.random()-.5)*kick*0.4);_hnZ+=_hnVZ;_hnVZ*=damp;
+    cam.position.copy(pos);cam.position.x+=_hnX+Math.sin(el*.35)*.012;
+    cam.position.y+=_hnY+Math.cos(el*.28)*.008;cam.position.z+=_hnZ;
+    cam.lookAt(lk.x+_hnX*0.3,lk.y+_hnY*0.2,lk.z);
   }else{
     const wp=getWP(dist,lookYOff),pos=es(wp.p,cp),lk=es(wp.l,cp);
     cam.position.copy(pos);cam.position.x+=Math.sin(el*.35)*.012;cam.position.y+=Math.cos(el*.28)*.008;
