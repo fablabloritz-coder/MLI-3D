@@ -23,6 +23,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 .cat-h:hover{color:var(--b);}
 .cat-ico{font-size:.9rem;width:20px;text-align:center;flex-shrink:0;}
 .cat-lbl{font-size:.72rem;font-weight:500;letter-spacing:.06em;color:var(--t);flex:1;}
+.lock-btn{background:none;border:none;cursor:pointer;font-size:.75rem;padding:2px 4px;opacity:.35;transition:opacity .2s,transform .15s;flex-shrink:0;line-height:1;}
+.lock-btn:hover{opacity:.8;}
+.lock-btn.locked{opacity:1;transform:scale(1.1);}
 .cat-arr{font-size:.55rem;color:var(--d);transition:transform .25s;}.cat.closed .cat-arr{transform:rotate(-90deg);}
 .cat-body{padding:0 0 8px;overflow:hidden;max-height:800px;transition:max-height .3s ease,padding .3s;}
 .cat.closed .cat-body{max-height:0;padding:0;overflow:hidden;}
@@ -194,7 +197,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <!-- 2. TEXTES & LOGO -->
 <div class="cat" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">✏️</span><span class="cat-lbl">Textes & Logo</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">✏️</span><span class="cat-lbl">Textes & Logo</span><button class="lock-btn" id="lock-textes" onclick="toggleLock('textes',this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="st">Titre</div>
 <div class="f"><label>Police</label><select id="fontT"><option value="'Cormorant Garamond',serif" selected>Cormorant Garamond</option><option value="'Playfair Display',serif">Playfair Display</option><option value="'Cinzel',serif">Cinzel</option><option value="'Montserrat',sans-serif">Montserrat</option><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Raleway',sans-serif">Raleway</option><option value="custom">✏️ Police personnalisée…</option></select></div>
@@ -223,7 +226,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <!-- 3. COULEURS & SOL -->
 <div class="cat closed" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">🎨</span><span class="cat-lbl">Couleurs & Sol</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">🎨</span><span class="cat-lbl">Couleurs & Sol</span><button class="lock-btn" id="lock-couleurs" onclick="toggleLock('couleurs',this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="cr"><input type="color" id="cA" value="#dcc8aa"><label>Textes</label></div>
 <div class="cr"><input type="color" id="cB" value="#08080a"><label>Fond</label></div>
@@ -256,7 +259,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <!-- 4. ÉCLAIRAGE -->
 <div class="cat" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">💡</span><span class="cat-lbl">Éclairage</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">💡</span><span class="cat-lbl">Éclairage</span><button class="lock-btn" id="lock-eclairage" onclick="toggleLock("eclairage",this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="f"><label>Preset</label><div class="pr" id="lightPr">
 <button class="pb ac" data-kc="#ffeedd" data-ki="20" data-rc="#ddccaa" data-ri="7" data-ai="4" data-lo="0" onclick="lightP(this)">Classique</button>
@@ -287,7 +290,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <!-- 5. ENVIRONNEMENT -->
 <div class="cat closed" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">🌐</span><span class="cat-lbl">Environnement HDRI</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">🌐</span><span class="cat-lbl">Environnement HDRI</span><button class="lock-btn" id="lock-hdri" onclick="toggleLock("hdri",this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="f"><label>Environnement</label><select id="hdri">
 <option value="">Aucun</option>
@@ -302,7 +305,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <!-- 6. CAMÉRA -->
 <div class="cat" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">🎥</span><span class="cat-lbl">Caméra</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">🎥</span><span class="cat-lbl">Caméra</span><button class="lock-btn" id="lock-camera" onclick="toggleLock("camera",this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="f"><label>Preset</label><div class="pr" id="camPr">
 <button class="pb" data-s="8" data-d="90" onclick="camP(this)">Contemplatif</button>
@@ -330,7 +333,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <!-- 7. EFFETS -->
 <div class="cat closed" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">✨</span><span class="cat-lbl">Effets visuels</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">✨</span><span class="cat-lbl">Effets visuels</span><button class="lock-btn" id="lock-effets" onclick="toggleLock("effets",this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div class="tr"><span>Bloom (halo)</span><button class="tg" id="togBloom" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Intensité</label><div class="sr"><input type="range" id="bloomI" min="1" max="30" value="8"><span class="v" id="bloomIV">0.8</span></div></div>
@@ -425,7 +428,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 
 <!-- 9. MUSIQUE -->
 <div class="cat closed" onclick="this.classList.toggle('closed')">
-<div class="cat-h"><span class="cat-ico">🔊</span><span class="cat-lbl">Musique & Audio</span><span class="cat-arr">▼</span></div>
+<div class="cat-h"><span class="cat-ico">🔊</span><span class="cat-lbl">Musique & Audio</span><button class="lock-btn" id="lock-audio" onclick="toggleLock("audio",this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
 <div id="aDrop" class="drop"><div class="lb">Glissez un <strong>.mp3</strong> ici</div><input type="file" accept=".mp3,.wav,.ogg,.m4a" style="display:none" id="aIn"></div>
 <div class="f" style="margin-top:6px"><label>Volume</label><div class="sr"><input type="range" id="aVol" min="0" max="100" value="50"><span class="v" id="aVolV">50%</span></div></div>
@@ -1948,6 +1951,9 @@ function delScn(idx){
 }
 function loadC_fromObj(c){
   if(!c)return;
+  // Filtrer les clés verrouillées
+  const locked=_lockedKeys();
+  if(locked.size>0){c=Object.fromEntries(Object.entries(c).filter(([k])=>!locked.has(k)));}
   // Direct map: config key → element ID (only for values stored AS-IS, no division)
   const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor',appMode:'appMode',envPreset:'envPreset',envFov:'envFov',travelAmp:'travelAmp',handIntensity:'handIntensity'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
@@ -2175,6 +2181,35 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();}
   if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();redo();}
 });
+
+// ═══ VERROUILLAGE DE GROUPES ═══
+const _locks=new Set();
+const _lockKeys={
+  textes:['title','sub','bl','br','live','fontT','tTsz','tSsz','tBsz','tOp','liveC','liveSz','txtAnim','animDur','logoPos','logoSz'],
+  couleurs:['accent','bg','floorC','showFloor','reflectFloor'],
+  eclairage:['keyC','keyI','kDist','rimC','rimI','l2C','l2I','l2Orb','ambI','lOrb','gExp'],
+  camera:['camSpd','camDist','cLookY','camMode','cutDur','orbitH','travelAmp','handIntensity'],
+  effets:['bloom','bloomI','dof','dofAp','fog','fogD','cine','cineH','grain','vig','dust','dustCount','dustSize','lines','linePos'],
+  hdri:['hdri','hdriBg','hdriInt'],
+  audio:['audioVol','audioViz','audioLoop','lightPulse','pulseForce','pulseBright','pulseDecay','pulseColors','vizScale','vizColor','showTrackName'],
+};
+// Clés verrouillées à plat
+function _lockedKeys(){
+  const s=new Set();
+  _locks.forEach(g=>{(_lockKeys[g]||[]).forEach(k=>s.add(k));});
+  return s;
+}
+function toggleLock(group,btn){
+  if(_locks.has(group)){
+    _locks.delete(group);
+    btn.textContent='🔓';btn.classList.remove('locked');
+    btn.title='Verrouiller ce groupe';
+  }else{
+    _locks.add(group);
+    btn.textContent='🔒';btn.classList.add('locked');
+    btn.title='Groupe verrouillé — déverrouiller';
+  }
+}
 
 // ═══ ANIMATION ═══
 // Shot sequencer for cuts mode — shuffled, no consecutive repeats
