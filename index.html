@@ -807,15 +807,25 @@ function loadModelSlot(slotIdx,buf,type){
 
   if(type==='fbx'){
     try{
-      const obj=fbxLoader.parse(buf,'');
+      const obj=new THREE.FBXLoader().parse(buf,'');// nouvelle instance à chaque fois
       const bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());
       sl.baseScale=4/Math.max(sz.y,0.01);obj.scale.setScalar(sl.baseScale);
       const b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());
       obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;
       obj.traverse(c=>{if(c.isMesh){
         c.castShadow=c.receiveShadow=true;
-        if(Array.isArray(c.material))c.material.forEach(m=>{if(m)sl.origMats.push({mesh:c,mat:m.clone()});});
-        else if(c.material)sl.origMats.push({mesh:c,mat:c.material.clone()});
+        // Convertir MeshPhongMaterial → MeshStandardMaterial pour compatibilité lumières/popup
+        const mats=Array.isArray(c.material)?c.material:[c.material];
+        c.material=mats.map(m=>{
+          if(!m)return new THREE.MeshStandardMaterial({color:0xcccccc,roughness:0.6,metalness:0.1});
+          const col=m.color?m.color.clone():new THREE.Color(0xcccccc);
+          return new THREE.MeshStandardMaterial({color:col,roughness:0.6,metalness:0.1,
+            map:m.map||null,normalMap:m.normalMap||null,emissive:m.emissive?m.emissive.clone():new THREE.Color(0),
+            transparent:m.transparent||false,opacity:m.opacity!=null?m.opacity:1});
+        });
+        if(c.material.length===1)c.material=c.material[0];
+        const singleMat=Array.isArray(c.material)?c.material[0]:c.material;
+        sl.origMats.push({mesh:c,mat:singleMat.clone()});
       }});
       gr.add(obj);
       updateSceneBounds();
@@ -2275,7 +2285,26 @@ if(mb&&mType==='stl'){
   mesh.castShadow=mesh.receiveShadow=true;G.add(mesh);
   var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;
   ${matCode}
-} else if(mb&&mType==='fbx'){try{var obj=new THREE.FBXLoader().parse(mb,'');var bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());var bsc=4/Math.max(sz.y,0.01);obj.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;obj.traverse(function(x){if(x.isMesh){x.castShadow=x.receiveShadow=true;}});G.add(obj);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;var fanims=obj.animations||(obj.userData&&obj.userData.animations)||[];if(fanims.length>0){mixer=new THREE.AnimationMixer(obj);fanims.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}}catch(fe){console.error('FBX',fe);}
+} else if(mb&&mType==='fbx'){try{
+  var obj=new THREE.FBXLoader().parse(mb,'');
+  var bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());
+  var bsc=4/Math.max(sz.y,0.01);obj.scale.setScalar(bsc*${c.slots[0].scale});
+  var b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());
+  obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;
+  obj.traverse(function(x){if(x.isMesh){
+    x.castShadow=x.receiveShadow=true;
+    var mats=Array.isArray(x.material)?x.material:[x.material];
+    x.material=mats.map(function(m){
+      if(!m)return new THREE.MeshStandardMaterial({color:0xcccccc,roughness:.6,metalness:.1});
+      return new THREE.MeshStandardMaterial({color:m.color?m.color.clone():new THREE.Color(0xcccccc),roughness:.6,metalness:.1,transparent:m.transparent||false,opacity:m.opacity!=null?m.opacity:1});
+    });
+    if(x.material.length===1)x.material=x.material[0];
+  }});
+  G.add(obj);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;
+  var fanims=obj.animations||(obj.userData&&obj.userData.animations)||[];
+  if(fanims.length>0){mixer=new THREE.AnimationMixer(obj);fanims.forEach(function(cl){mixer.clipAction(cl).play();});}
+  ${matCode}
+}catch(fe){console.error('FBX',fe);}
 } else if(mb){new THREE.GLTFLoader().parse(mb,'',function(g){var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());var bsc=4/sz.y;m.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;if(c.material&&(c.material.transparent||c.material.opacity<1||c.material.alphaMap)){c.material.transparent=true;c.material.depthWrite=false;}}});G.add(m);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;if(g.animations&&g.animations.length>0){mixer=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}});} else{}
 var fl=new THREE.Mesh(new THREE.CircleGeometry(20,64),new THREE.MeshStandardMaterial({color:parseInt('${c.floorC}'.slice(1),16),roughness:${c.reflectFloor?'.05':'.9'},metalness:${c.reflectFloor?'.95':'0'}}));fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;fl.visible=${c.showFloor&&!(c.hdriBg&&c.hdri)};scene.add(fl);scene.add(G);
 // Load extra model slots (1 and 2)
@@ -2300,7 +2329,15 @@ ${[1,2].map(si=>{
     obj.scale.setScalar(4/Math.max(sz.y,0.01)*${sc.scale});
     var b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());
     obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;
-    obj.traverse(function(x){if(x.isMesh){x.castShadow=x.receiveShadow=true;}});grp.add(obj);
+    obj.traverse(function(x){if(x.isMesh){
+      x.castShadow=x.receiveShadow=true;
+      var mats=Array.isArray(x.material)?x.material:[x.material];
+      x.material=mats.map(function(m){
+        if(!m)return new THREE.MeshStandardMaterial({color:0xcccccc,roughness:.6,metalness:.1});
+        return new THREE.MeshStandardMaterial({color:m.color?m.color.clone():new THREE.Color(0xcccccc),roughness:.6,metalness:.1,transparent:m.transparent||false,opacity:m.opacity!=null?m.opacity:1});
+      });
+      if(x.material.length===1)x.material=x.material[0];
+    }});grp.add(obj);
     var fa=obj.animations||(obj.userData&&obj.userData.animations)||[];
     if(fa.length>0){var mx=new THREE.AnimationMixer(obj);fa.forEach(function(cl){mx.clipAction(cl).play();});}
   }catch(fe){console.error('FBX slot',fe);}
