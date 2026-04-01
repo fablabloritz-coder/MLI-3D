@@ -67,7 +67,13 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 .fh{font-size:.6rem;color:var(--d);text-align:center;margin-top:5px;}
 
 /* PREVIEW */
-#pv{flex:1;position:relative;overflow:hidden;background:#08080a;}
+#pvWrap{flex:1;display:flex;align-items:center;justify-content:center;background:#050507;overflow:hidden;position:relative;}
+#pv{position:relative;overflow:hidden;background:#08080a;transition:width .3s,height .3s;}
+#pv.ratio-free{width:100%;height:100%;}
+#pv.ratio-16-9{aspect-ratio:16/9;max-width:100%;max-height:100%;}
+#pv.ratio-4-3{aspect-ratio:4/3;max-width:100%;max-height:100%;}
+#pv.ratio-9-16{aspect-ratio:9/16;max-width:100%;max-height:100%;}
+#pv.ratio-1-1{aspect-ratio:1/1;max-width:100%;max-height:100%;}
 #pv canvas{display:block;width:100%;height:100%;}
 .pvb{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;font-size:.55rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--d);background:rgba(24,24,28,.7);padding:3px 10px;border-radius:3px;backdrop-filter:blur(6px);border:1px solid var(--pb);}
 #ov{position:absolute;inset:0;pointer-events:none;z-index:10;display:flex;flex-direction:column;justify-content:space-between;}
@@ -469,10 +475,24 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </div></div>
 
 </div>
-<div class="pf"><button class="launch" onclick="openPopup()">Lancer la fenêtre OBS</button><div class="fh">Dans OBS : Capture de fenêtre · Touche F = plein écran · Chrome masque la barre d'URL</div></div>
+<div class="pf">
+  <button class="launch" onclick="openPopup()">Lancer la fenêtre OBS</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px;">
+    <span style="font-size:.6rem;color:var(--d);">Ratio aperçu</span>
+    <div style="display:flex;gap:4px;">
+      <button class="pb ac" id="rFree" onclick="setRatio('free',this)" title="Libre">Libre</button>
+      <button class="pb" id="r169" onclick="setRatio('16-9',this)" title="16:9 Paysage">16:9</button>
+      <button class="pb" id="r43" onclick="setRatio('4-3',this)" title="4:3">4:3</button>
+      <button class="pb" id="r916" onclick="setRatio('9-16',this)" title="9:16 Vertical">9:16</button>
+      <button class="pb" id="r11" onclick="setRatio('1-1',this)" title="Carré">1:1</button>
+    </div>
+  </div>
+  <div class="fh">Dans OBS : Capture de fenêtre · Touche F = plein écran · Chrome masque la barre d'URL</div>
+</div>
 </div>
 
-<div id="pv">
+<div id="pvWrap">
+<div id="pv" class="ratio-free">
 <div class="pvb">Aperçu en direct</div>
 <button class="rec-btn" id="recBtn" onclick="toggleRec()" title="Enregistrer en .webm">⏺ REC</button>
 <div id="fadeOv" style="position:absolute;inset:0;background:#000;z-index:15;opacity:0;pointer-events:none;transition:opacity 0.8s;"></div>
@@ -493,7 +513,8 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </div>
 </div>
 <div id="wmOv" style="position:absolute;z-index:9;pointer-events:none;font-family:'Raleway',sans-serif;font-weight:200;letter-spacing:.15em;text-transform:uppercase;display:none;"></div>
-</div>
+</div><!-- /pv -->
+</div><!-- /pvWrap -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -613,7 +634,22 @@ const pmrem=new THREE.PMREMGenerator(R);pmrem.compileEquirectangularShader();
 // Adaptive resolution
 let adaptPR=1,frameCount=0,frameTimes=[];
 
-function resize(){const w=pvE.clientWidth,h=pvE.clientHeight;R.setSize(w,h);R.setPixelRatio(adaptPR);composer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
+// ═══ RATIO RESPONSIVE ═══
+let _currentRatio='free';
+const _ratioMap={'free':null,'16-9':[16,9],'4-3':[4,3],'9-16':[9,16],'1-1':[1,1]};
+function setRatio(r,btn){
+  _currentRatio=r;
+  const pv=$('pv');
+  pv.className='ratio-'+r;
+  document.querySelectorAll('.pf .pb').forEach(b=>b.classList.remove('ac'));
+  if(btn)btn.classList.add('ac');
+  // Mettre à jour la popup si ouverte
+  setTimeout(resize,50);
+}
+function resize(){
+  const w=pvE.clientWidth,h=pvE.clientHeight;
+  R.setSize(w,h);R.setPixelRatio(adaptPR);composer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();
+}
 resize();window.addEventListener('resize',resize);
 
 // ═══ MATERIALS ═══
@@ -2259,8 +2295,10 @@ function stopRec(){
 
 function openPopup(){
   const sw=screen.availWidth,sh=screen.availHeight;
-  let w=Math.min(sw-40,1920),h=Math.round(w*9/16);
-  if(h>sh-80){h=sh-80;w=Math.round(h*16/9);}
+  const ratio=_ratioMap[_currentRatio]||[16,9];
+  const [rw,rh]=ratio;
+  let w=Math.min(sw-40,1920),h=Math.round(w*rh/rw);
+  if(h>sh-80){h=sh-80;w=Math.round(h*rw/rh);}
   const p=window.open('','3DI_OBS',`width=${w},height=${h},left=${Math.round((sw-w)/2)},top=${Math.round((sh-h)/2)},menubar=no,toolbar=no,location=no,status=no,scrollbars=no`);
   if(!p){alert('Popup bloqué — autorisez les popups.');return;}
   p.document.open();p.document.write(buildPop());p.document.close();
