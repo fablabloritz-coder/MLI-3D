@@ -307,6 +307,8 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="cat" onclick="this.classList.toggle('closed')">
 <div class="cat-h"><span class="cat-ico">🎥</span><span class="cat-lbl">Caméra</span><button class="lock-btn" id="lock-camera" onclick="toggleLock('camera',this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
+<!-- Contrôles mode Objet 3D -->
+<div id="camObjectControls">
 <div class="f"><label>Preset</label><div class="pr" id="camPr">
 <button class="pb" data-s="8" data-d="90" onclick="camP(this)">Contemplatif</button>
 <button class="pb ac" data-s="18" data-d="80" onclick="camP(this)">Standard</button>
@@ -314,7 +316,6 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <button class="pb" data-s="12" data-d="55" onclick="camP(this)">Intime</button>
 <button class="pb" data-s="25" data-d="110" onclick="camP(this)">Panoramique</button>
 </div></div>
-<div class="f"><label>Vitesse</label><div class="sr"><input type="range" id="cSpd" min="3" max="50" value="18"><span class="v" id="cSpdV">18</span></div></div>
 <div class="f"><label>Distance</label><div class="sr"><input type="range" id="cDst" min="10" max="200" value="80"><span class="v" id="cDstV">80%</span></div></div>
 <div class="f"><label>Point de visée (hauteur)</label><div class="sr"><input type="range" id="cLookY" min="-50" max="50" value="0"><span class="v" id="cLookYV">0</span></div></div>
 <div class="st">Mode</div>
@@ -329,6 +330,25 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div id="camOrbitRow" style="display:none" class="f"><label>Hauteur orbite</label><div class="sr"><input type="range" id="orbitH" min="-20" max="50" value="15" oninput="U()"><span class="v" id="orbitHV">1.5</span></div></div>
 <div id="camTravelRow" style="display:none" class="f"><label>Amplitude travelling</label><div class="sr"><input type="range" id="travelAmp" min="10" max="200" value="80" oninput="U()"><span class="v" id="travelAmpV">80%</span></div></div>
 <div id="camHandRow" style="display:none" class="f"><label>Intensité tremblement</label><div class="sr"><input type="range" id="handIntensity" min="1" max="20" value="5" oninput="U()"><span class="v" id="handIntensityV">5</span></div></div>
+</div><!-- /camObjectControls -->
+<!-- Contrôles mode Environnement 3D -->
+<div id="camEnvControls" style="display:none">
+<div class="fh" style="text-align:left;margin-bottom:6px;">La caméra se déplace à l'intérieur de l'environnement. Choisissez un preset et ajustez la vitesse.</div>
+<div class="f"><label>Preset mouvement</label>
+  <select id="envPreset2" onchange="$('envPreset').value=this.value;U()" style="width:145px">
+    <option value="exploration">🔍 Exploration</option>
+    <option value="survol">🦅 Survol</option>
+    <option value="couloir">➡️ Couloir</option>
+    <option value="panoramique">🔄 Panoramique</option>
+    <option value="orbital">⭕ Orbital</option>
+  </select>
+</div>
+<div class="f"><label>Distance au centre</label><div class="sr"><input type="range" id="cDstEnv" min="5" max="100" value="35" oninput="U()"><span class="v" id="cDstEnvV">35%</span></div></div>
+<div class="f"><label>Hauteur de vue</label><div class="sr"><input type="range" id="envEyeH" min="-50" max="50" value="10" oninput="U()"><span class="v" id="envEyeHV">10%</span></div></div>
+<div class="f"><label>Champ de vision (FOV)</label><div class="sr"><input type="range" id="envFov2" min="40" max="110" value="75" oninput="$('envFov').value=this.value;U()"><span class="v" id="envFov2V">75°</span></div></div>
+</div><!-- /camEnvControls -->
+<!-- Vitesse — toujours visible -->
+<div class="f"><label>Vitesse</label><div class="sr"><input type="range" id="cSpd" min="3" max="50" value="18"><span class="v" id="cSpdV">18</span></div></div>
 </div></div>
 
 <!-- 7. EFFETS -->
@@ -774,8 +794,11 @@ function updateAppModeUI(){
   const isEnv=$('appMode').value==='env';
   $('objectSection').style.display=isEnv?'none':'';
   $('envSection').style.display=isEnv?'':'none';
+  // Adapter la section Caméra
+  $('camObjectControls').style.display=isEnv?'none':'';
+  $('camEnvControls').style.display=isEnv?'':'none';
   // Ajuster FOV et near/far selon le mode
-  if(isEnv){cam.fov=$('envFov').value||75;cam.near=0.05;cam.far=1000;}
+  if(isEnv){cam.fov=+($('envFov2').value||75);cam.near=0.05;cam.far=1000;}
   else{cam.fov=35;cam.near=0.01;cam.far=500;}
   cam.updateProjectionMatrix();
   U();
@@ -801,13 +824,18 @@ function loadEnv(buf,type){
   };
   if(type==='glb'){gltfLoader.parse(buf,'',g=>process(g.scene));}
 }
-function getEnvCamPath(preset,el,spd){
+function getEnvCamPath(preset,el,spd,distPct,eyeHPct){
   if(!envBounds)return{pos:new THREE.Vector3(0,2,5),target:new THREE.Vector3(0,1,0)};
   const C=envBounds.center,S2=envBounds.size;
-  const r=Math.min(S2.x,S2.z)*0.35;
-  const eyeY=C.y+S2.y*0.1;
-  const highY=C.y+S2.y*0.38;
-  const t=el*spd*0.3;
+  // Distance : % de la demi-taille horizontale (5%→100%)
+  const distFactor=(distPct||35)/100;
+  const r=Math.min(S2.x,S2.z)*0.5*distFactor;
+  // Hauteur de vue : % de la hauteur totale (-50%→+50%)
+  const eyeOff=(eyeHPct||10)/100;
+  const eyeY=C.y+S2.y*eyeOff;
+  const highY=C.y+S2.y*(eyeOff+0.3);
+  // Vitesse : normalisée, valeurs 3-50 → très lent à normal
+  const t=el*(spd/500);
   switch(preset){
     case'exploration':{
       const pos=new THREE.Vector3(C.x+Math.sin(t)*r*0.65,eyeY+Math.sin(t*1.3)*S2.y*0.08,C.z+Math.cos(t*0.7)*r*0.65);
@@ -1233,6 +1261,9 @@ function U(){
   $('cSpdV').textContent=c.camSpd;$('cDstV').textContent=c.camDist+'%';
   $('cLookYV').textContent=c.cLookY.toFixed(1);$('cutDurV').textContent=c.cutDur.toFixed(0)+'s';
   $('orbitHV').textContent=c.orbitH.toFixed(1);$('travelAmpV').textContent=c.travelAmp+'%';$('handIntensityV').textContent=c.handIntensity;
+  if($('cDstEnvV'))$('cDstEnvV').textContent=+$('cDstEnv').value+'%';
+  if($('envEyeHV'))$('envEyeHV').textContent=+$('envEyeH').value+'%';
+  if($('envFov2V'))$('envFov2V').textContent=+$('envFov2').value+'°';
   $('bloomIV').textContent=c.bloomI.toFixed(1);$('cineHV').textContent=c.cineH+'%';
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('fogDV').textContent=Math.round(c.fogD*1000);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
@@ -2294,9 +2325,11 @@ function anim(t){
   cp+=dt*spd;if(cp>1)cp-=1;
   const isEnv=window.getConfig&&window.getConfig().appMode==='env';
   if(isEnv){
-    const preset=$('envPreset').value||'exploration';
-    const ec=getEnvCamPath(preset,el,+$('cSpd').value);
-    cam.fov=+($('envFov').value||75);cam.updateProjectionMatrix();
+    const preset=$('envPreset2').value||$('envPreset').value||'exploration';
+    const distPct=+($('cDstEnv').value||35);
+    const eyeHPct=+($('envEyeH').value||10);
+    const ec=getEnvCamPath(preset,el,+$('cSpd').value,distPct,eyeHPct);
+    cam.fov=+($('envFov2').value||$('envFov').value||75);cam.updateProjectionMatrix();
     cam.position.copy(ec.pos);cam.lookAt(ec.target);
   }else if(mode==='orbit'){
     // Orbite statique : cercle autour de mC à rayon fixe
