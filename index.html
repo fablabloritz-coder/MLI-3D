@@ -627,7 +627,7 @@ window.getConfig=()=>({
   bgAnim:$('bgAnim').value,bgOpacity:+$('bgOpacity').value,bgMode:$('bgMode').value,bgScale:+$('bgScale').value,bgGapH:+$('bgGapH').value,bgGapV:+$('bgGapV').value,bgBlur:+$('bgBlur').value,
   crowd:$('togCrowd').classList.contains('on'),crowdRand:$('togCrowdRand').classList.contains('on'),crowdDensity:+$('crowdDensity').value,crowdScale:+$('crowdScale').value,crowdGap:+$('crowdGap').value,crowdHeight:+$('crowdHeight').value,crowdDist:+$('crowdDist').value,
   crowdMode:$('crowdMode').value,crowd3DColor:$('crowd3DColor').value,crowd3DRand:$('togCrowd3DRand').classList.contains('on'),crowd3DRotOffset:+$('crowd3DRotOffset').value,
-  appMode:$('appMode').value,envPreset:$('envPreset2')?$('envPreset2').value:$('envPreset').value,envFov:+($('envFov2')?$('envFov2').value:$('envFov').value),
+  appMode:$('appMode').value,envPreset:$('envPreset2')?$('envPreset2').value:($('envPreset')?$('envPreset').value:'exploration'),envFov:+($('envFov2')?$('envFov2').value:75),
   envCamMode:$('envCamMode').value,envCutDur:+$('envCutDur').value/10,envCouloirAngle:+$('envCouloirAngle').value,
   cDstEnv:+$('cDstEnv').value,envEyeH:+$('envEyeH').value,
   flash:$('togFlash').classList.contains('on'),flashFreq:+$('flashFreq').value,flashPow:+$('flashPow').value/10,
@@ -1167,7 +1167,7 @@ function U(){
   // Auto-hide floor when HDRI bg is on
   if(c.hdriBg&&c.hdri)flr.visible=false;
   // Env FOV display
-  if(c.envFov)$('envFovV').textContent=(c.envFov||75)+'°';
+  if($('envFov2V'))$('envFov2V').textContent=(c.envFov||75)+'°';
 
   const ch=c.cineH;
   $('eCT').style.display=c.cine?'':'none';$('eCB').style.display=c.cine?'':'none';
