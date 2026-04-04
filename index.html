@@ -2812,11 +2812,11 @@ ${c.appMode==='env'?`
   var t=el*(${c.camSpd}/500);
   var distF=${(c.cDstEnv||35)/100};
   var r=Math.min(S2.x,S2.z)*0.5*distF;
-  var eyeY=C.y+S2.y*${(c.envEyeH||10)/100};
-  var highY=C.y+S2.y*(${(c.envEyeH||10)/100}+0.3);
+  var eyeOff=${(c.envEyeH||10)/100};var eyeY=C.y+S2.y*eyeOff;
+  var highY=C.y+S2.y*(eyeOff+0.3);
   var ca=${((c.envCouloirAngle||0)*Math.PI/180).toFixed(4)};
   var pos,tgt;
-  switch('${c.envPreset||'exploration'}'){
+  var _prs=${JSON.stringify(c.envPreset||'exploration')};switch(_prs){
     case 'survol':
       pos=new THREE.Vector3(C.x+Math.cos(t)*r*0.8,highY,C.z+Math.sin(t)*r*0.8);
       tgt=new THREE.Vector3(C.x,C.y,C.z);break;
