@@ -2332,46 +2332,41 @@ function anim(t){
   const lookYOff=+$('cLookY').value/10;
   const mode=$('camMode').value;
   const cutDurVal=+$('cutDur').value/10;
+  const isEnv=window.getConfig&&window.getConfig().appMode==='env';
+  const envMode=$('envCamMode').value||'continuous';
 
   if(!fadeOvEl)fadeOvEl=$('fadeOv');
 
-  if(mode==='cuts'){
+  // ── Fondu noir — logique unifiée, indépendante du mode de déplacement ──
+  const fadeActive=isEnv?(envMode==='cuts'):(mode==='cuts');
+  const fadeDur=0.8;
+  const fadeCutDur=isEnv?+($('envCutDur').value||80)/10:cutDurVal;
+
+  if(fadeActive){
     cutTimer+=dt;
-    const fadeDur=0.8;
-    if(cutPhase==='show'&&cutTimer>cutDurVal-fadeDur){
+    if(cutPhase==='show'&&cutTimer>fadeCutDur-fadeDur){
       cutPhase='fadeout';fadeOvEl.style.opacity='1';
     }
-    if(cutPhase==='fadeout'&&cutTimer>cutDurVal){
-      // Jump to random position
-      cp=nextShot();
+    if(cutPhase==='fadeout'&&cutTimer>fadeCutDur){
+      // Sauter la caméra selon le mode
+      if(isEnv){
+        _envTimeOffset+=Math.random()*40+10;
+      }else{
+        cp=nextShot();
+      }
       cutPhase='fadein';cutTimer=0;
       setTimeout(()=>{fadeOvEl.style.opacity='0';cutPhase='show';},100);
     }
-  } else {
+  }else{
     fadeOvEl.style.opacity='0';cutPhase='show';cutTimer=0;
   }
 
   cp+=dt*spd;if(cp>1)cp-=1;
-  const isEnv=window.getConfig&&window.getConfig().appMode==='env';
   if(isEnv){
     const preset=$('envPreset2').value||'exploration';
     const distPct=+($('cDstEnv').value||35);
     const eyeHPct=+($('envEyeH').value||10);
     const couloirAngle=+($('envCouloirAngle').value||0);
-    const envMode=$('envCamMode').value||'continuous';
-    const envCutDur=+($('envCutDur').value||80)/10;
-    // Fondu noir en mode cuts
-    if(!fadeOvEl)fadeOvEl=$('fadeOv');
-    if(envMode==='cuts'){
-      cutTimer+=dt;const fadeDur=0.8;
-      if(cutPhase==='show'&&cutTimer>envCutDur-fadeDur){cutPhase='fadeout';fadeOvEl.style.opacity='1';}
-      if(cutPhase==='fadeout'&&cutTimer>envCutDur){
-        // Sauter à une nouvelle position en décalant le temps apparent
-        _envTimeOffset+=Math.random()*40+10;
-        cutPhase='fadein';cutTimer=0;
-        setTimeout(()=>{fadeOvEl.style.opacity='0';cutPhase='show';},100);
-      }
-    }else{fadeOvEl.style.opacity='0';cutPhase='show';cutTimer=0;}
     const couloirLength=+($('envCouloirLength').value||40);
     const ec=getEnvCamPath(preset,el+_envTimeOffset,+$('cSpd').value,distPct,eyeHPct,couloirAngle,couloirLength);
     cam.fov=+($('envFov2').value||75);cam.updateProjectionMatrix();
