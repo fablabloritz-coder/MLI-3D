@@ -334,6 +334,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
   </select>
 </div>
 <div id="envCouloirRow" style="display:none" class="f"><label>Orientation couloir (°)</label><div class="sr"><input type="range" id="envCouloirAngle" min="0" max="360" value="0" oninput="U()"><span class="v" id="envCouloirAngleV">0°</span></div></div>
+<div id="envCouloirLengthRow" style="display:none" class="f"><label>Longueur du couloir</label><div class="sr"><input type="range" id="envCouloirLength" min="10" max="100" value="40" oninput="U()"><span class="v" id="envCouloirLengthV">40%</span></div></div>
 <div class="f"><label>Distance au centre</label><div class="sr"><input type="range" id="cDstEnv" min="5" max="100" value="35" oninput="U()"><span class="v" id="cDstEnvV">35%</span></div></div>
 <div class="f"><label>Hauteur de vue</label><div class="sr"><input type="range" id="envEyeH" min="-50" max="50" value="10" oninput="U()"><span class="v" id="envEyeHV">10%</span></div></div>
 <div class="f"><label>Champ de vision (FOV)</label><div class="sr"><input type="range" id="envFov2" min="40" max="110" value="75" oninput="$('envFov').value=this.value;U()"><span class="v" id="envFov2V">75°</span></div></div>
@@ -628,7 +629,7 @@ window.getConfig=()=>({
   crowd:$('togCrowd').classList.contains('on'),crowdRand:$('togCrowdRand').classList.contains('on'),crowdDensity:+$('crowdDensity').value,crowdScale:+$('crowdScale').value,crowdGap:+$('crowdGap').value,crowdHeight:+$('crowdHeight').value,crowdDist:+$('crowdDist').value,
   crowdMode:$('crowdMode').value,crowd3DColor:$('crowd3DColor').value,crowd3DRand:$('togCrowd3DRand').classList.contains('on'),crowd3DRotOffset:+$('crowd3DRotOffset').value,
   appMode:$('appMode').value,envPreset:$('envPreset2')?$('envPreset2').value:($('envPreset')?$('envPreset').value:'exploration'),envFov:+($('envFov2')?$('envFov2').value:75),
-  envCamMode:$('envCamMode').value,envCutDur:+$('envCutDur').value/10,envCouloirAngle:+$('envCouloirAngle').value,
+  envCamMode:$('envCamMode').value,envCutDur:+$('envCutDur').value/10,envCouloirAngle:+$('envCouloirAngle').value,envCouloirLength:+$('envCouloirLength').value,
   cDstEnv:+$('cDstEnv').value,envEyeH:+$('envEyeH').value,
   flash:$('togFlash').classList.contains('on'),flashFreq:+$('flashFreq').value,flashPow:+$('flashPow').value/10,
   countdown:$('togCountdown').classList.contains('on'),cdMin:+$('cdMin').value,cdText:$('cdText').value,cdSize:+$('cdSize').value,
@@ -823,7 +824,7 @@ function loadEnv(buf,type){
   };
   if(type==='glb'){gltfLoader.parse(buf,'',g=>process(g.scene));}
 }
-function getEnvCamPath(preset,el,spd,distPct,eyeHPct,couloirAngle){
+function getEnvCamPath(preset,el,spd,distPct,eyeHPct,couloirAngle,couloirLength){
   const ca=(couloirAngle||0)*Math.PI/180;
   if(!envBounds)return{pos:new THREE.Vector3(0,2,5),target:new THREE.Vector3(0,1,0)};
   const C=envBounds.center,S2=envBounds.size;
@@ -846,14 +847,26 @@ function getEnvCamPath(preset,el,spd,distPct,eyeHPct,couloirAngle){
       return{pos:new THREE.Vector3(C.x+Math.cos(t)*r*0.8,highY,C.z+Math.sin(t)*r*0.8),target:new THREE.Vector3(C.x,C.y,C.z)};
     }
     case'couloir':{
-      const fwd=((Math.sin(t*0.5)+1)/2);
-      const L=Math.max(S2.x,S2.z)*0.4;
-      // Déplacement le long de l'axe orienté par ca
-      const dx=Math.sin(ca)*(-L+fwd*L*2);const dz2=Math.cos(ca)*(-L+fwd*L*2);
-      const dirFwd=Math.cos(t*0.5)>0?1:-1;
-      const tx=C.x+dx;const tz=C.z+dz2;
-      return{pos:new THREE.Vector3(tx+Math.sin(t*0.2)*0.3,eyeY,tz+Math.cos(t*0.2)*0.3),
-             target:new THREE.Vector3(tx+Math.sin(ca)*dirFwd*3,eyeY-0.05,tz+Math.cos(ca)*dirFwd*3)};
+      // Longueur configurable : % du plus grand axe de l'environnement
+      const L=Math.max(S2.x,S2.z)*((couloirLength||40)/100);
+      // Phase : 0→1 aller, 1→2 demi-tour, 2→3 retour, 3→4 demi-tour
+      const phase=(t*0.5)%(Math.PI*2);
+      // Position lerp smooth avec ease-in/out aux extrémités
+      const raw=(Math.sin(phase)+1)/2;// 0→1→0
+      const progress=raw;// déjà smooth grâce au sinus
+      // Position le long de l'axe orienté
+      const px=C.x+Math.sin(ca)*(-L+progress*L*2);
+      const pz=C.z+Math.cos(ca)*(-L+progress*L*2);
+      // Direction de regard : vers où on va (dérivée du mouvement)
+      const lookAhead=0.3;
+      const px2=C.x+Math.sin(ca)*(-L+Math.min(1,progress+lookAhead)*L*2);
+      const pz2=C.z+Math.cos(ca)*(-L+Math.min(1,progress+lookAhead)*L*2);
+      // Demi-tour : interpoler la direction de regard vers l'arrière quand progress > 0.85
+      const turnBlend=Math.max(0,Math.min(1,(progress-0.85)/0.15));
+      const txTgt=px2*(1-turnBlend)+( C.x+Math.sin(ca)*(-L+(1-progress+lookAhead)*L*2) )*turnBlend;
+      const tzTgt=pz2*(1-turnBlend)+( C.z+Math.cos(ca)*(-L+(1-progress+lookAhead)*L*2) )*turnBlend;
+      return{pos:new THREE.Vector3(px,eyeY,pz),
+             target:new THREE.Vector3(txTgt,eyeY-0.05,tzTgt)};
     }
     case'panoramique':{
       return{pos:new THREE.Vector3(C.x,eyeY,C.z),target:new THREE.Vector3(C.x+Math.sin(t*0.6)*15,eyeY+Math.sin(t*0.3)*0.5,C.z+Math.cos(t*0.6)*15)};
@@ -876,6 +889,7 @@ function updateCamModeUI(){
 function updateEnvCouloir(){
   const isCouloir=$('envPreset2')&&$('envPreset2').value==='couloir';
   if($('envCouloirRow'))$('envCouloirRow').style.display=isCouloir?'':'none';
+  if($('envCouloirLengthRow'))$('envCouloirLengthRow').style.display=isCouloir?'':'none';
   if($('envCutDurRow'))$('envCutDurRow').style.display=$('envCamMode')&&$('envCamMode').value==='cuts'?'':'none';
 }
 // Handheld noise state
@@ -1274,6 +1288,7 @@ function U(){
   if($('envEyeHV'))$('envEyeHV').textContent=+$('envEyeH').value+'%';
   if($('envFov2V'))$('envFov2V').textContent=+$('envFov2').value+'°';
   if($('envCouloirAngleV'))$('envCouloirAngleV').textContent=+$('envCouloirAngle').value+'°';
+  if($('envCouloirLengthV'))$('envCouloirLengthV').textContent=+$('envCouloirLength').value+'%';
   if($('envCutDurV'))$('envCutDurV').textContent=(+$('envCutDur').value/10).toFixed(0)+'s';
   updateEnvCouloir();
   $('bloomIV').textContent=c.bloomI.toFixed(1);$('cineHV').textContent=c.cineH+'%';
@@ -2304,6 +2319,7 @@ function nextShot(){
 }
 
 let cutTimer=0,cutPhase='show',fadeOvEl=null;
+let _envTimeOffset=0;// décalage temporel pour les cuts en mode environnement
 const clock=new THREE.Clock();
 let _prevFrameT=0;
 function anim(t){
@@ -2349,9 +2365,15 @@ function anim(t){
     if(envMode==='cuts'){
       cutTimer+=dt;const fadeDur=0.8;
       if(cutPhase==='show'&&cutTimer>envCutDur-fadeDur){cutPhase='fadeout';fadeOvEl.style.opacity='1';}
-      if(cutPhase==='fadeout'&&cutTimer>envCutDur){cp=nextShot();cutPhase='fadein';cutTimer=0;setTimeout(()=>{fadeOvEl.style.opacity='0';cutPhase='show';},100);}
+      if(cutPhase==='fadeout'&&cutTimer>envCutDur){
+        // Sauter à une nouvelle position en décalant le temps apparent
+        _envTimeOffset+=Math.random()*40+10;
+        cutPhase='fadein';cutTimer=0;
+        setTimeout(()=>{fadeOvEl.style.opacity='0';cutPhase='show';},100);
+      }
     }else{fadeOvEl.style.opacity='0';cutPhase='show';cutTimer=0;}
-    const ec=getEnvCamPath(preset,el,+$('cSpd').value,distPct,eyeHPct,couloirAngle);
+    const couloirLength=+($('envCouloirLength').value||40);
+    const ec=getEnvCamPath(preset,el+_envTimeOffset,+$('cSpd').value,distPct,eyeHPct,couloirAngle,couloirLength);
     cam.fov=+($('envFov2').value||75);cam.updateProjectionMatrix();
     cam.position.copy(ec.pos);cam.lookAt(ec.target);
   }else if(mode==='orbit'){
