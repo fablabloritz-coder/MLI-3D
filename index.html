@@ -180,17 +180,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <!-- Section Environnement -->
 <div id="envSection" style="display:none">
 <div id="envDrop" class="drop" style="margin-bottom:6px"><div class="lb">Environnement (<strong>.glb / .gltf</strong>)</div><input type="file" accept=".glb,.gltf" style="display:none" id="envIn"></div>
-<div class="fh" style="text-align:left;margin-bottom:6px;">GLB avec intérieur (salle, scène, galerie…). La caméra se placera à l'intérieur.</div>
-<div class="f"><label>Preset caméra</label>
-  <select id="envPreset" onchange="U()" style="width:145px">
-    <option value="exploration">🔍 Exploration</option>
-    <option value="survol">🦅 Survol</option>
-    <option value="couloir">➡️ Couloir</option>
-    <option value="panoramique">🔄 Panoramique</option>
-    <option value="orbital">⭕ Orbital</option>
-  </select>
-</div>
-<div class="f"><label>Champ de vision (FOV)</label><div class="sr"><input type="range" id="envFov" min="40" max="110" value="75" oninput="U()"><span class="v" id="envFovV">75°</span></div></div>
+<div class="fh" style="text-align:left;margin-bottom:6px;">GLB avec intérieur (salle, scène, galerie…). Configurez la caméra dans la section Caméra ci-dessous.</div>
 </div><!-- /envSection -->
 
 </div></div>
@@ -333,9 +323,9 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </div><!-- /camObjectControls -->
 <!-- Contrôles mode Environnement 3D -->
 <div id="camEnvControls" style="display:none">
-<div class="fh" style="text-align:left;margin-bottom:6px;">La caméra se déplace à l'intérieur de l'environnement. Choisissez un preset et ajustez la vitesse.</div>
+<div class="fh" style="text-align:left;margin-bottom:6px;">La caméra se déplace à l'intérieur de l'environnement.</div>
 <div class="f"><label>Preset mouvement</label>
-  <select id="envPreset2" onchange="$('envPreset').value=this.value;U()" style="width:145px">
+  <select id="envPreset2" onchange="$('envPreset').value=this.value;updateEnvCouloir();U()" style="width:145px">
     <option value="exploration">🔍 Exploration</option>
     <option value="survol">🦅 Survol</option>
     <option value="couloir">➡️ Couloir</option>
@@ -343,9 +333,16 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
     <option value="orbital">⭕ Orbital</option>
   </select>
 </div>
+<div id="envCouloirRow" style="display:none" class="f"><label>Orientation couloir (°)</label><div class="sr"><input type="range" id="envCouloirAngle" min="0" max="360" value="0" oninput="U()"><span class="v" id="envCouloirAngleV">0°</span></div></div>
 <div class="f"><label>Distance au centre</label><div class="sr"><input type="range" id="cDstEnv" min="5" max="100" value="35" oninput="U()"><span class="v" id="cDstEnvV">35%</span></div></div>
 <div class="f"><label>Hauteur de vue</label><div class="sr"><input type="range" id="envEyeH" min="-50" max="50" value="10" oninput="U()"><span class="v" id="envEyeHV">10%</span></div></div>
 <div class="f"><label>Champ de vision (FOV)</label><div class="sr"><input type="range" id="envFov2" min="40" max="110" value="75" oninput="$('envFov').value=this.value;U()"><span class="v" id="envFov2V">75°</span></div></div>
+<div class="st">Mode de déplacement</div>
+<div class="f"><label>Type</label><select id="envCamMode" onchange="U()" style="width:145px">
+  <option value="continuous">Continu (fluide)</option>
+  <option value="cuts">Plans enchaînés (fondu noir)</option>
+</select></div>
+<div class="f" id="envCutDurRow"><label>Durée par plan</label><div class="sr"><input type="range" id="envCutDur" min="30" max="150" value="80" oninput="U()"><span class="v" id="envCutDurV">8s</span></div></div>
 </div><!-- /camEnvControls -->
 <!-- Vitesse — toujours visible -->
 <div class="f"><label>Vitesse</label><div class="sr"><input type="range" id="cSpd" min="3" max="50" value="18"><span class="v" id="cSpdV">18</span></div></div>
@@ -630,7 +627,9 @@ window.getConfig=()=>({
   bgAnim:$('bgAnim').value,bgOpacity:+$('bgOpacity').value,bgMode:$('bgMode').value,bgScale:+$('bgScale').value,bgGapH:+$('bgGapH').value,bgGapV:+$('bgGapV').value,bgBlur:+$('bgBlur').value,
   crowd:$('togCrowd').classList.contains('on'),crowdRand:$('togCrowdRand').classList.contains('on'),crowdDensity:+$('crowdDensity').value,crowdScale:+$('crowdScale').value,crowdGap:+$('crowdGap').value,crowdHeight:+$('crowdHeight').value,crowdDist:+$('crowdDist').value,
   crowdMode:$('crowdMode').value,crowd3DColor:$('crowd3DColor').value,crowd3DRand:$('togCrowd3DRand').classList.contains('on'),crowd3DRotOffset:+$('crowd3DRotOffset').value,
-  appMode:$('appMode').value,envPreset:$('envPreset').value,envFov:+$('envFov').value,
+  appMode:$('appMode').value,envPreset:$('envPreset2')?$('envPreset2').value:$('envPreset').value,envFov:+($('envFov2')?$('envFov2').value:$('envFov').value),
+  envCamMode:$('envCamMode').value,envCutDur:+$('envCutDur').value/10,envCouloirAngle:+$('envCouloirAngle').value,
+  cDstEnv:+$('cDstEnv').value,envEyeH:+$('envEyeH').value,
   flash:$('togFlash').classList.contains('on'),flashFreq:+$('flashFreq').value,flashPow:+$('flashPow').value/10,
   countdown:$('togCountdown').classList.contains('on'),cdMin:+$('cdMin').value,cdText:$('cdText').value,cdSize:+$('cdSize').value,
   colorFilter:$('colorFilter').value,filterInt:+$('filterInt').value,filterColor:$('filterColor').value,
@@ -824,7 +823,8 @@ function loadEnv(buf,type){
   };
   if(type==='glb'){gltfLoader.parse(buf,'',g=>process(g.scene));}
 }
-function getEnvCamPath(preset,el,spd,distPct,eyeHPct){
+function getEnvCamPath(preset,el,spd,distPct,eyeHPct,couloirAngle){
+  const ca=(couloirAngle||0)*Math.PI/180;
   if(!envBounds)return{pos:new THREE.Vector3(0,2,5),target:new THREE.Vector3(0,1,0)};
   const C=envBounds.center,S2=envBounds.size;
   // Distance : % de la demi-taille horizontale (5%→100%)
@@ -846,10 +846,14 @@ function getEnvCamPath(preset,el,spd,distPct,eyeHPct){
       return{pos:new THREE.Vector3(C.x+Math.cos(t)*r*0.8,highY,C.z+Math.sin(t)*r*0.8),target:new THREE.Vector3(C.x,C.y,C.z)};
     }
     case'couloir':{
-      const fwd=((Math.sin(t*0.5)+1)/2);// 0→1→0 smooth
-      const pz=C.z-S2.z*0.4+fwd*S2.z*0.8;
-      const dz=Math.cos(t*0.5)>0?1:-1;
-      return{pos:new THREE.Vector3(C.x+Math.sin(t*0.2)*S2.x*0.05,eyeY,pz),target:new THREE.Vector3(C.x,eyeY-0.05,pz+dz*2)};
+      const fwd=((Math.sin(t*0.5)+1)/2);
+      const L=Math.max(S2.x,S2.z)*0.4;
+      // Déplacement le long de l'axe orienté par ca
+      const dx=Math.sin(ca)*(-L+fwd*L*2);const dz2=Math.cos(ca)*(-L+fwd*L*2);
+      const dirFwd=Math.cos(t*0.5)>0?1:-1;
+      const tx=C.x+dx;const tz=C.z+dz2;
+      return{pos:new THREE.Vector3(tx+Math.sin(t*0.2)*0.3,eyeY,tz+Math.cos(t*0.2)*0.3),
+             target:new THREE.Vector3(tx+Math.sin(ca)*dirFwd*3,eyeY-0.05,tz+Math.cos(ca)*dirFwd*3)};
     }
     case'panoramique':{
       return{pos:new THREE.Vector3(C.x,eyeY,C.z),target:new THREE.Vector3(C.x+Math.sin(t*0.6)*15,eyeY+Math.sin(t*0.3)*0.5,C.z+Math.cos(t*0.6)*15)};
@@ -868,6 +872,11 @@ function updateCamModeUI(){
   $('camOrbitRow').style.display=m==='orbit'?'':'none';
   $('camTravelRow').style.display=m==='travel'?'':'none';
   $('camHandRow').style.display=m==='handheld'?'':'none';
+}
+function updateEnvCouloir(){
+  const isCouloir=$('envPreset2')&&$('envPreset2').value==='couloir';
+  if($('envCouloirRow'))$('envCouloirRow').style.display=isCouloir?'':'none';
+  if($('envCutDurRow'))$('envCutDurRow').style.display=$('envCamMode')&&$('envCamMode').value==='cuts'?'':'none';
 }
 // Handheld noise state
 let _hnX=0,_hnY=0,_hnZ=0,_hnVX=0,_hnVY=0,_hnVZ=0;
@@ -1264,6 +1273,9 @@ function U(){
   if($('cDstEnvV'))$('cDstEnvV').textContent=+$('cDstEnv').value+'%';
   if($('envEyeHV'))$('envEyeHV').textContent=+$('envEyeH').value+'%';
   if($('envFov2V'))$('envFov2V').textContent=+$('envFov2').value+'°';
+  if($('envCouloirAngleV'))$('envCouloirAngleV').textContent=+$('envCouloirAngle').value+'°';
+  if($('envCutDurV'))$('envCutDurV').textContent=(+$('envCutDur').value/10).toFixed(0)+'s';
+  updateEnvCouloir();
   $('bloomIV').textContent=c.bloomI.toFixed(1);$('cineHV').textContent=c.cineH+'%';
   $('hdriIntV').textContent=c.hdriInt.toFixed(1);
   $('dofApV').textContent=c.dofAp.toFixed(1);$('fogDV').textContent=Math.round(c.fogD*1000);$('animDurV').textContent=c.animDur.toFixed(1)+'s';
@@ -1992,7 +2004,7 @@ function loadC_fromObj(c){
   const locked=_lockedKeys();
   if(locked.size>0){c=Object.fromEntries(Object.entries(c).filter(([k])=>!locked.has(k)));}
   // Direct map: config key → element ID (only for values stored AS-IS, no division)
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor',crowd3DRotOffset:'crowd3DRotOffset',appMode:'appMode',envPreset:'envPreset',envFov:'envFov',travelAmp:'travelAmp',handIntensity:'handIntensity'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor',crowd3DRotOffset:'crowd3DRotOffset',appMode:'appMode',envPreset:'envPreset2',envFov:'envFov2',envCamMode:'envCamMode',envCouloirAngle:'envCouloirAngle'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   // Values stored divided — must multiply back for slider
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
@@ -2015,6 +2027,7 @@ function loadC_fromObj(c){
   if(c.dustSize!=null)$('dustSize').value=Math.round(c.dustSize*100);
   if(c.transDur!=null){$('transDur').value=Math.round(c.transDur*10);$('transDurV').textContent=c.transDur.toFixed(1)+'s';}
   if(c.orbitH!=null)$('orbitH').value=Math.round(c.orbitH*10);
+  if(c.envCutDur!=null)$('envCutDur').value=Math.round(c.envCutDur*10);
   updateCamModeUI();
   // Slots
   if(c.slots&&c.slots[0]){
@@ -2325,11 +2338,21 @@ function anim(t){
   cp+=dt*spd;if(cp>1)cp-=1;
   const isEnv=window.getConfig&&window.getConfig().appMode==='env';
   if(isEnv){
-    const preset=$('envPreset2').value||$('envPreset').value||'exploration';
+    const preset=$('envPreset2').value||'exploration';
     const distPct=+($('cDstEnv').value||35);
     const eyeHPct=+($('envEyeH').value||10);
-    const ec=getEnvCamPath(preset,el,+$('cSpd').value,distPct,eyeHPct);
-    cam.fov=+($('envFov2').value||$('envFov').value||75);cam.updateProjectionMatrix();
+    const couloirAngle=+($('envCouloirAngle').value||0);
+    const envMode=$('envCamMode').value||'continuous';
+    const envCutDur=+($('envCutDur').value||80)/10;
+    // Fondu noir en mode cuts
+    if(!fadeOvEl)fadeOvEl=$('fadeOv');
+    if(envMode==='cuts'){
+      cutTimer+=dt;const fadeDur=0.8;
+      if(cutPhase==='show'&&cutTimer>envCutDur-fadeDur){cutPhase='fadeout';fadeOvEl.style.opacity='1';}
+      if(cutPhase==='fadeout'&&cutTimer>envCutDur){cp=nextShot();cutPhase='fadein';cutTimer=0;setTimeout(()=>{fadeOvEl.style.opacity='0';cutPhase='show';},100);}
+    }else{fadeOvEl.style.opacity='0';cutPhase='show';cutTimer=0;}
+    const ec=getEnvCamPath(preset,el,+$('cSpd').value,distPct,eyeHPct,couloirAngle);
+    cam.fov=+($('envFov2').value||75);cam.updateProjectionMatrix();
     cam.position.copy(ec.pos);cam.lookAt(ec.target);
   }else if(mode==='orbit'){
     // Orbite statique : cercle autour de mC à rayon fixe
@@ -2595,7 +2618,31 @@ if(mb&&mType==='stl'){
   ${matCode}
 }catch(fe){console.error('FBX',fe);}
 } else if(mb){new THREE.GLTFLoader().parse(mb,'',function(g){var m=g.scene,bx=new THREE.Box3().setFromObject(m),sz=bx.getSize(new THREE.Vector3());var bsc=4/sz.y;m.scale.setScalar(bsc*${c.slots[0].scale});var b2=new THREE.Box3().setFromObject(m),c2=b2.getCenter(new THREE.Vector3());m.position.x-=c2.x;m.position.z-=c2.z;m.position.y-=b2.min.y;m.traverse(function(c){if(c.isMesh){c.castShadow=c.receiveShadow=true;if(c.material&&(c.material.transparent||c.material.opacity<1||c.material.alphaMap)){c.material.transparent=true;c.material.depthWrite=false;}}});G.add(m);var fb=new THREE.Box3().setFromObject(G);mC=fb.getCenter(new THREE.Vector3());mH=fb.max.y-fb.min.y;if(g.animations&&g.animations.length>0){mixer=new THREE.AnimationMixer(m);g.animations.forEach(function(cl){mixer.clipAction(cl).play();});}${matCode}});} else{}
-var fl=new THREE.Mesh(new THREE.CircleGeometry(20,64),new THREE.MeshStandardMaterial({color:parseInt('${c.floorC}'.slice(1),16),roughness:${c.reflectFloor?'.05':'.9'},metalness:${c.reflectFloor?'.95':'0'}}));fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;fl.visible=${c.showFloor&&!(c.hdriBg&&c.hdri)};scene.add(fl);scene.add(G);
+var fl=new THREE.Mesh(new THREE.CircleGeometry(20,64),new THREE.MeshStandardMaterial({color:parseInt('${c.floorC}'.slice(1),16),roughness:${c.reflectFloor?'.05':'.9'},metalness:${c.reflectFloor?'.95':'0'}}));fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;fl.visible=${c.showFloor&&!(c.hdriBg&&c.hdri)};scene.add(fl);
+${c.appMode==='env'?`
+// Environnement 3D
+fl.visible=false;G.visible=false;
+(function(){
+  var st=null;try{st=window.opener&&window.opener.getState&&window.opener.getState();}catch(e){}
+  if(!st||!st.envBuf)return;
+  new THREE.GLTFLoader().parse(st.envBuf,'',function(g){
+    var obj=g.scene;
+    var bx=new THREE.Box3().setFromObject(obj),sz=bx.getSize(new THREE.Vector3());
+    var maxH=Math.max(sz.x,sz.z),ns=20/Math.max(maxH,1);
+    obj.scale.setScalar(ns);
+    var b2=new THREE.Box3().setFromObject(obj),c2=b2.getCenter(new THREE.Vector3());
+    obj.position.x-=c2.x;obj.position.z-=c2.z;obj.position.y-=b2.min.y;
+    obj.traverse(function(c){if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
+    scene.add(obj);
+    var b3=new THREE.Box3().setFromObject(obj);
+    var envC=b3.getCenter(new THREE.Vector3()),envS=b3.getSize(new THREE.Vector3());
+    window._envBounds={center:envC,size:envS};
+    // Adapter near/far et FOV
+    camera.fov=${c.envFov||75};camera.near=0.05;camera.far=1000;camera.updateProjectionMatrix();
+  });
+})();
+`:''}
+scene.add(G);
 // Load extra model slots (1 and 2)
 ${[1,2].map(si=>{
   const sc=c.slots[si];if(!sc)return'';
@@ -2756,7 +2803,42 @@ var dt=Math.min(0.05,ck.getDelta()),el=ck.getElapsedTime();
 if(mixer)mixer.update(dt);
 ${c.camMode==='cuts'?`cutT+=dt;if(cutPh==='show'&&cutT>${c.cutDur}-0.8){cutPh='fadeout';fadeEl.style.opacity='1';}if(cutPh==='fadeout'&&cutT>${c.cutDur}){cp=nextShot();cutPh='fadein';cutT=0;setTimeout(function(){fadeEl.style.opacity='0';cutPh='show';},100);}`:''}
 cp+=dt*${c.camSpd}/1000;if(cp>1)cp-=1;
-${c.camMode==='orbit'?`var _or=${c.camDist}/100*Math.max(1,${Math.max(1,mW/2).toFixed(2)})*1.4;camera.position.set(mC.x+Math.cos(el*${c.camSpd}/166)*_or,Math.max(0.2,mC.y+${c.orbitH}),mC.z+Math.sin(el*${c.camSpd}/166)*_or);camera.lookAt(mC.x,mC.y+${c.cLookY},mC.z);`:c.camMode==='travel'?`var _ta=${c.travelAmp}/100*Math.max(1,${Math.max(1,mW/2).toFixed(2)})*1.2;var _tp=(Math.sin(el*${c.camSpd}/333)+1)/2;camera.position.set(mC.x-_ta+_tp*_ta*2,Math.max(0.3,mC.y+${c.cLookY}),mC.z+${(c.camDist/100*Math.max(1,mW/2)*0.6).toFixed(2)});camera.lookAt(mC.x,mC.y+${c.cLookY*0.5},mC.z);`:c.camMode==='handheld'?`var wp=getWP(),pos=ES(wp.p,cp),lk=ES(wp.l,cp);if(!anim._hx){anim._hx=0;anim._hy=0;anim._hz=0;anim._hvx=0;anim._hvy=0;anim._hvz=0;}var _hi=${c.handIntensity}*0.001,_sp=0.08,_dp=0.72,_kk=0.004*_hi*60;anim._hvx+=(-anim._hx*_sp+(Math.random()-.5)*_kk);anim._hx+=anim._hvx;anim._hvx*=_dp;anim._hvy+=(-anim._hy*_sp+(Math.random()-.5)*_kk*.6);anim._hy+=anim._hvy;anim._hvy*=_dp;anim._hvz+=(-anim._hz*_sp+(Math.random()-.5)*_kk*.4);anim._hz+=anim._hvz;anim._hvz*=_dp;camera.position.copy(pos);camera.position.x+=anim._hx+Math.sin(el*.35)*.012;camera.position.y+=anim._hy+Math.cos(el*.28)*.008;camera.position.z+=anim._hz;camera.lookAt(lk.x+anim._hx*0.3,lk.y+anim._hy*0.2,lk.z);`:`var wp=getWP(),pos=ES(wp.p,cp),lk=ES(wp.l,cp);camera.position.copy(pos);camera.position.x+=Math.sin(el*.35)*.012;camera.position.y+=Math.cos(el*.28)*.008;camera.lookAt(lk);`}
+${c.appMode==='env'?`
+// Caméra Environnement 3D dans popup
+(function(){
+  var eb=window._envBounds;
+  if(!eb){camera.position.set(0,2,5);camera.lookAt(0,1,0);return;}
+  var C=eb.center,S2=eb.size;
+  var t=el*(${c.camSpd}/500);
+  var distF=${(c.cDstEnv||35)/100};
+  var r=Math.min(S2.x,S2.z)*0.5*distF;
+  var eyeY=C.y+S2.y*${(c.envEyeH||10)/100};
+  var highY=C.y+S2.y*(${(c.envEyeH||10)/100}+0.3);
+  var ca=${((c.envCouloirAngle||0)*Math.PI/180).toFixed(4)};
+  var pos,tgt;
+  switch('${c.envPreset||'exploration'}'){
+    case 'survol':
+      pos=new THREE.Vector3(C.x+Math.cos(t)*r*0.8,highY,C.z+Math.sin(t)*r*0.8);
+      tgt=new THREE.Vector3(C.x,C.y,C.z);break;
+    case 'couloir':
+      var L=Math.max(S2.x,S2.z)*0.4,fwd=(Math.sin(t*0.5)+1)/2;
+      var dx=Math.sin(ca)*(-L+fwd*L*2),dz2=Math.cos(ca)*(-L+fwd*L*2);
+      var dirF=Math.cos(t*0.5)>0?1:-1;
+      pos=new THREE.Vector3(C.x+dx,eyeY,C.z+dz2);
+      tgt=new THREE.Vector3(C.x+dx+Math.sin(ca)*dirF*3,eyeY-0.05,C.z+dz2+Math.cos(ca)*dirF*3);break;
+    case 'panoramique':
+      pos=new THREE.Vector3(C.x,eyeY,C.z);
+      tgt=new THREE.Vector3(C.x+Math.sin(t*0.6)*15,eyeY+Math.sin(t*0.3)*0.5,C.z+Math.cos(t*0.6)*15);break;
+    case 'orbital':
+      pos=new THREE.Vector3(C.x+Math.cos(t)*r,eyeY,C.z+Math.sin(t)*r);
+      tgt=new THREE.Vector3(C.x,C.y+S2.y*0.15,C.z);break;
+    default:// exploration
+      pos=new THREE.Vector3(C.x+Math.sin(t)*r*0.65,eyeY+Math.sin(t*1.3)*S2.y*0.08,C.z+Math.cos(t*0.7)*r*0.65);
+      tgt=new THREE.Vector3(C.x+Math.sin(t+1.2)*r*0.55,eyeY+Math.sin(t*1.3+0.5)*S2.y*0.06,C.z+Math.cos(t*0.7+1.2)*r*0.55);
+  }
+  camera.position.copy(pos);camera.lookAt(tgt);
+})();
+`:${c.camMode==='orbit'?`var _or=${c.camDist}/100*Math.max(1,${Math.max(1,mW/2).toFixed(2)})*1.4;camera.position.set(mC.x+Math.cos(el*${c.camSpd}/166)*_or,Math.max(0.2,mC.y+${c.orbitH}),mC.z+Math.sin(el*${c.camSpd}/166)*_or);camera.lookAt(mC.x,mC.y+${c.cLookY},mC.z);`:c.camMode==='travel'?`var _ta=${c.travelAmp}/100*Math.max(1,${Math.max(1,mW/2).toFixed(2)})*1.2;var _tp=(Math.sin(el*${c.camSpd}/333)+1)/2;camera.position.set(mC.x-_ta+_tp*_ta*2,Math.max(0.3,mC.y+${c.cLookY}),mC.z+${(c.camDist/100*Math.max(1,mW/2)*0.6).toFixed(2)});camera.lookAt(mC.x,mC.y+${c.cLookY*0.5},mC.z);`:c.camMode==='handheld'?`var wp=getWP(),pos=ES(wp.p,cp),lk=ES(wp.l,cp);if(!anim._hx){anim._hx=0;anim._hy=0;anim._hz=0;anim._hvx=0;anim._hvy=0;anim._hvz=0;}var _hi=${c.handIntensity}*0.001,_sp=0.08,_dp=0.72,_kk=0.004*_hi*60;anim._hvx+=(-anim._hx*_sp+(Math.random()-.5)*_kk);anim._hx+=anim._hvx;anim._hvx*=_dp;anim._hvy+=(-anim._hy*_sp+(Math.random()-.5)*_kk*.6);anim._hy+=anim._hvy;anim._hvy*=_dp;anim._hvz+=(-anim._hz*_sp+(Math.random()-.5)*_kk*.4);anim._hz+=anim._hvz;anim._hvz*=_dp;camera.position.copy(pos);camera.position.x+=anim._hx+Math.sin(el*.35)*.012;camera.position.y+=anim._hy+Math.cos(el*.28)*.008;camera.position.z+=anim._hz;camera.lookAt(lk.x+anim._hx*0.3,lk.y+anim._hy*0.2,lk.z);`:`var wp=getWP(),pos=ES(wp.p,cp),lk=ES(wp.l,cp);camera.position.copy(pos);camera.position.x+=Math.sin(el*.35)*.012;camera.position.y+=Math.cos(el*.28)*.008;camera.lookAt(lk);`}}
 ${c.slots[0].spin>0?`G.rotation.y+=${c.slots[0].spin}/100*dt;`:''}
 ${c.dof?`bkp.uniforms['focus'].value=camera.position.distanceTo(mC);`:''}
 ${c.dust?`var pa=pG.attributes.position.array;for(var i=0;i<PC;i++){pa[i*3+1]+=pS[i]*dt*6;pa[i*3]+=Math.sin(el*.4+pD[i])*.0004;pa[i*3+2]+=Math.cos(el*.3+pD[i])*.0003;if(pa[i*3+1]>8){pa[i*3+1]=-.5;pa[i*3]=(Math.random()-.5)*14;pa[i*3+2]=(Math.random()-.5)*14;}}pG.attributes.position.needsUpdate=true;`:''}
