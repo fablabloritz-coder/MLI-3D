@@ -282,7 +282,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="cat closed" onclick="this.classList.toggle('closed')">
 <div class="cat-h"><span class="cat-ico">🌐</span><span class="cat-lbl">Environnement HDRI</span><button class="lock-btn" id="lock-hdri" onclick="toggleLock('hdri',this);event.stopPropagation()" title="Verrouiller ce groupe">🔓</button><span class="cat-arr">▼</span></div>
 <div class="cat-body" onclick="event.stopPropagation()">
-<div class="f"><label>Environnement</label><select id="hdri">
+<div class="f"><label>Environnement</label><select id="hdri" onchange="U()">
 <option value="">Aucun</option>
 <optgroup label="Studio"><option value="studio_small_09">Studio sombre</option><option value="studio_small_03">Studio neutre</option><option value="studio_small_07">Studio lumineux</option><option value="photo_studio_loft_hall">Loft studio</option></optgroup>
 <optgroup label="Extérieur"><option value="kloofendal_48d_partly_cloudy_puresky">Ciel nuageux</option><option value="evening_road_01_puresky">Crépuscule</option><option value="dikhololo_night_puresky">Nuit étoilée</option><option value="aerodynamics_workshop">Atelier industriel</option></optgroup>
@@ -293,8 +293,8 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div id="hdriDiag" class="fh" style="text-align:left;margin:-2px 0 6px 0;color:#6f7a86;font-size:10px">diag: -</div>
 <div class="tr"><span>Afficher en fond</span><button class="tg" id="togHdriBg" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Fond 360 net</span><button class="tg on" id="togHdriBgSharp" onclick="this.classList.toggle('on');U()"></button></div>
-<div class="f"><label>Reflets</label><select id="hdriRefMode"><option value="none">Aucun (léger)</option><option value="hdri" selected>HDRI</option><option value="gradient">Dégradé (léger)</option></select></div>
-<div class="f"><label>Résolution (presets)</label><select id="hdriRes" onchange="U()"><option value="1k">1K (rapide)</option><option value="2k" selected>2K (plus net)</option><option value="4k">4K (lourd)</option><option value="8k">8K (très lourd)</option></select></div>
+<div class="f"><label>Reflets</label><select id="hdriRefMode" onchange="U()"><option value="none">Aucun (léger)</option><option value="hdri" selected>HDRI</option><option value="gradient">Dégradé (léger)</option></select></div>
+<div class="f" id="hdriResRow"><label>Résolution (presets)</label><select id="hdriRes" onchange="U()"><option value="1k">1K (rapide)</option><option value="2k" selected>2K (plus net)</option><option value="4k">4K (lourd)</option><option value="8k">8K (très lourd)</option></select></div>
 <div class="f"><label>Presets rapides</label><div class="pr" style="gap:6px"><button class="pb" onclick="applyHdriPreset('bg8kNoRef')">Fond 8K sans reflets</button><button class="pb" onclick="applyHdriPreset('bg4kGradRef')">Fond 4K + reflets dégradé</button><button class="pb" onclick="applyHdriPreset('bg2kHdriRef')">Fond 2K + reflets HDRI</button></div></div>
 <div class="f"><label>Intensité reflets</label><div class="sr"><input type="range" id="hdriInt" min="1" max="30" value="10"><span class="v" id="hdriIntV">1.0</span></div></div>
 </div></div>
@@ -1380,6 +1380,10 @@ function U(){
   });
 
   // HDRI
+  // Show/hide resolution row: only relevant for Polyhaven presets, not custom uploads
+  const isCustomHdri=(c.hdri==='custom');
+  const hdriResRow=$('hdriResRow');
+  if(hdriResRow)hdriResRow.style.display=isCustomHdri?'none':'';
   loadHDRI(c.hdri,c);
   if(c.hdri){
     if(c.hdriBg){scene.fog.density=0;}
