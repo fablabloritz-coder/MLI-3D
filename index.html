@@ -1040,12 +1040,9 @@ function setHdriDiag(c){
   el.textContent='diag: '+val;
 }
 function prepareHdriTexture(tex){
-  // Use equirect directly - Three.js has a native optimized path for this.
-  // NearestFilter is the RGBELoader default and causes block artifacts; override with Linear.
+  // HalfFloatType loader already sets LinearFilter + LinearEncoding (correctly decoded floats).
+  // Just enforce equirect mapping.
   tex.mapping=THREE.EquirectangularReflectionMapping;
-  tex.generateMipmaps=false;
-  tex.minFilter=THREE.LinearFilter;
-  tex.magFilter=THREE.LinearFilter;
   tex.needsUpdate=true;
   return tex;
 }
@@ -1116,7 +1113,8 @@ function loadHDRI(slug,c){
     resetHDRIResources();
     curHdriSlug='custom';curHdriRes='custom';
     setHdriStatus('chargement custom...',false);
-    const loader=new THREE.RGBELoader();
+    // HalfFloatType: RGBE bytes decoded to float16 before storage → LinearFilter interpolates correctly
+    const loader=new THREE.RGBELoader().setDataType(THREE.HalfFloatType);
     const blob=new Blob([S.customHdriBuf]);
     const url=URL.createObjectURL(blob);
     loader.load(url,tex=>{
@@ -1147,7 +1145,7 @@ function loadHDRI(slug,c){
   const loadAtRes=(res,fallbackTo1k)=>{
     const url='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/'+res+'/'+slug+'_'+res+'.hdr';
     console.log('[HDRI] Requesting URL: '+url);
-    new THREE.RGBELoader().load(url,tex=>{
+    new THREE.RGBELoader().setDataType(THREE.HalfFloatType).load(url,tex=>{
       console.log('[HDRI] Loaded '+res+', texSize='+tex.image.width+'x'+tex.image.height);
       _hdriLoadingKey=null;
       prepareHdriTexture(tex);
