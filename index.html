@@ -1038,6 +1038,15 @@ function setHdriDiag(c){
   ].join(' | ');
   el.textContent='diag: '+val;
 }
+function prepareHdriTexture(tex){
+  tex.mapping=THREE.EquirectangularReflectionMapping;
+  // RGBE/HDR backgrounds can turn black with mipmap filters on some drivers.
+  tex.generateMipmaps=false;
+  tex.minFilter=THREE.LinearFilter;
+  tex.magFilter=THREE.LinearFilter;
+  tex.needsUpdate=true;
+  return tex;
+}
 function resetHDRIResources(){
   if(curHdriEnvMap&&curHdriEnvMap.dispose)curHdriEnvMap.dispose();
   if(curHdriBgTex&&curHdriBgTex.dispose)curHdriBgTex.dispose();
@@ -1108,9 +1117,7 @@ function loadHDRI(slug,c){
     const blob=new Blob([S.customHdriBuf]);
     const url=URL.createObjectURL(blob);
     loader.load(url,tex=>{
-      tex.mapping=THREE.EquirectangularReflectionMapping;
-      tex.magFilter=THREE.LinearFilter;
-      tex.minFilter=THREE.LinearMipmapLinearFilter;
+      prepareHdriTexture(tex);
       curHdriBgTex=tex;
       try{curHdriEnvMap=pmrem.fromEquirectangular(tex).texture;}catch(e){console.warn('Custom PMREM build failed:',e);}
       applyHDRIState(window.getConfig());
@@ -1128,9 +1135,7 @@ function loadHDRI(slug,c){
   const loadAtRes=(res,fallbackTo1k)=>{
     const url='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/'+res+'/'+slug+'_'+res+'.hdr';
     new THREE.RGBELoader().load(url,tex=>{
-      tex.mapping=THREE.EquirectangularReflectionMapping;
-      tex.magFilter=THREE.LinearFilter;
-      tex.minFilter=THREE.LinearMipmapLinearFilter;
+      prepareHdriTexture(tex);
       curHdriBgTex=tex;
       try{curHdriEnvMap=pmrem.fromEquirectangular(tex).texture;}catch(e){console.warn('PMREM build failed:',e);}
       curHdriRes=res;
