@@ -290,6 +290,10 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </select></div>
 <div id="hdriDrop" class="drop" style="margin-bottom:6px"><div class="lb">HDRI personnalisé (<strong>.hdr</strong>)</div><input type="file" accept=".hdr,.exr" style="display:none" id="hdriIn"></div>
 <div class="tr"><span>Afficher en fond</span><button class="tg" id="togHdriBg" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="tr"><span>Fond 360 net</span><button class="tg on" id="togHdriBgSharp" onclick="this.classList.toggle('on');U()"></button></div>
+<div class="f"><label>Reflets</label><select id="hdriRefMode"><option value="none">Aucun (léger)</option><option value="hdri" selected>HDRI</option><option value="gradient">Dégradé (léger)</option></select></div>
+<div class="f"><label>Résolution (presets)</label><select id="hdriRes"><option value="1k">1K (rapide)</option><option value="2k" selected>2K (plus net)</option><option value="4k">4K (lourd)</option><option value="8k">8K (très lourd)</option></select></div>
+<div class="f"><label>Presets rapides</label><div class="pr" style="gap:6px"><button class="pb" onclick="applyHdriPreset('bg8kNoRef')">Fond 8K sans reflets</button><button class="pb" onclick="applyHdriPreset('bg4kGradRef')">Fond 4K + reflets dégradé</button><button class="pb" onclick="applyHdriPreset('bg2kHdriRef')">Fond 2K + reflets HDRI</button></div></div>
 <div class="f"><label>Intensité reflets</label><div class="sr"><input type="range" id="hdriInt" min="1" max="30" value="10"><span class="v" id="hdriIntV">1.0</span></div></div>
 </div></div>
 
@@ -610,7 +614,7 @@ window.getConfig=()=>({
   camMode:$('camMode').value,cutDur:+$('cutDur').value/10,
   orbitH:+$('orbitH').value/10,travelAmp:+$('travelAmp').value,handIntensity:+$('handIntensity').value,
   mat:S.curMat,
-  hdri:$('hdri').value,hdriBg:$('togHdriBg').classList.contains('on'),hdriInt:+$('hdriInt').value/10,
+  hdri:$('hdri').value,hdriBg:$('togHdriBg').classList.contains('on'),hdriBgSharp:$('togHdriBgSharp').classList.contains('on'),hdriRefMode:$('hdriRefMode').value,hdriRef:$('hdriRefMode').value==='hdri',hdriRes:$('hdriRes').value,hdriInt:+$('hdriInt').value/10,
   bloom:$('togBloom').classList.contains('on'),bloomI:+$('bloomI').value/10,
   dof:$('togDof').classList.contains('on'),dofAp:+$('dofAp').value/10,fog:$('togFog').classList.contains('on'),fogD:+$('fogD').value/1000,
   txtAnim:$('txtAnim').value,animDur:+$('animDur').value/10,
@@ -1009,33 +1013,89 @@ function setMat(btn){
 }
 
 // ═══ HDRI SYSTEM ═══
-let curHdriSlug='';
-function loadHDRI(slug){
+let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,gradEnvTex=null,gradEnvMap=null;
+function resetHDRIResources(){
+  if(curHdriEnvMap&&curHdriEnvMap.dispose)curHdriEnvMap.dispose();
+  if(curHdriBgTex&&curHdriBgTex.dispose)curHdriBgTex.dispose();
+  curHdriEnvMap=null;curHdriBgTex=null;
+}
+function getGradientEnvMap(){
+  if(gradEnvMap)return gradEnvMap;
+  const cv=document.createElement('canvas');cv.width=1024;cv.height=512;
+  const ctx=cv.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,cv.height);
+  g.addColorStop(0,'#f1e1c2');
+  g.addColorStop(0.35,'#b9cfe0');
+  g.addColorStop(1,'#2d3948');
+  ctx.fillStyle=g;ctx.fillRect(0,0,cv.width,cv.height);
+  gradEnvTex=new THREE.CanvasTexture(cv);
+  gradEnvTex.mapping=THREE.EquirectangularReflectionMapping;
+  gradEnvTex.minFilter=THREE.LinearMipmapLinearFilter;
+  gradEnvTex.magFilter=THREE.LinearFilter;
+  gradEnvMap=pmrem.fromEquirectangular(gradEnvTex).texture;
+  return gradEnvMap;
+}
+function applyHDRIState(c){
+  const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
+  if(refMode==='gradient')scene.environment=getGradientEnvMap();
+  else if(refMode==='hdri'&&c.hdri){
+    if(!curHdriEnvMap&&curHdriBgTex)curHdriEnvMap=pmrem.fromEquirectangular(curHdriBgTex).texture;
+    scene.environment=curHdriEnvMap;
+  }else scene.environment=null;
+  if(!c.hdri){scene.background=null;return;}
+  if(c.hdriBg){
+    const useSharp=c.hdriBgSharp||refMode!=='hdri'||!scene.environment;
+    scene.background=useSharp?curHdriBgTex:scene.environment;
+  }else scene.background=null;
+}
+function loadHDRI(slug,c){
   if(!slug||slug==='custom'){
-    if(slug!=='custom'){scene.environment=null;scene.background=null;curHdriSlug='';return;}
-    // Custom HDRI loaded via buffer
+    if(slug!=='custom'){
+      resetHDRIResources();
+      const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
+      scene.environment=refMode==='gradient'?getGradientEnvMap():null;
+      scene.background=null;curHdriSlug='';
+      return;
+    }
     if(!S.customHdriBuf){scene.environment=null;scene.background=null;return;}
-    if(curHdriSlug==='custom')return; // already loaded
-    curHdriSlug='custom';
+    if(curHdriSlug==='custom'&&curHdriBgTex){applyHDRIState(c);return;}
+    resetHDRIResources();
+    curHdriSlug='custom';curHdriRes='custom';
     const loader=new THREE.RGBELoader();
     const blob=new Blob([S.customHdriBuf]);
     const url=URL.createObjectURL(blob);
     loader.load(url,tex=>{
-      const envMap=pmrem.fromEquirectangular(tex).texture;
-      scene.environment=envMap;
-      if($('togHdriBg').classList.contains('on'))scene.background=envMap;
-      tex.dispose();URL.revokeObjectURL(url);
+      tex.mapping=THREE.EquirectangularReflectionMapping;
+      tex.magFilter=THREE.LinearFilter;
+      tex.minFilter=THREE.LinearMipmapLinearFilter;
+      curHdriBgTex=tex;
+      applyHDRIState(c);
+      URL.revokeObjectURL(url);
     },undefined,err=>{console.warn('Custom HDRI failed:',err);URL.revokeObjectURL(url);});
     return;
   }
-  if(slug===curHdriSlug)return;
-  curHdriSlug=slug;
-  new THREE.RGBELoader().load(HDRI_BASE+slug+'_1k.hdr',tex=>{
-    const envMap=pmrem.fromEquirectangular(tex).texture;
-    scene.environment=envMap;
-    if($('togHdriBg').classList.contains('on'))scene.background=envMap;
-    tex.dispose();
-  },undefined,err=>{console.warn('HDRI load failed:',err);});
+
+  const wantedRes=(c.hdriRes||'1k');
+  if(slug===curHdriSlug&&wantedRes===curHdriRes&&curHdriBgTex){applyHDRIState(c);return;}
+  resetHDRIResources();
+  curHdriSlug=slug;curHdriRes=wantedRes;
+
+  const loadAtRes=(res,fallbackTo1k)=>{
+    const url='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/'+res+'/'+slug+'_'+res+'.hdr';
+    new THREE.RGBELoader().load(url,tex=>{
+      tex.mapping=THREE.EquirectangularReflectionMapping;
+      tex.magFilter=THREE.LinearFilter;
+      tex.minFilter=THREE.LinearMipmapLinearFilter;
+      curHdriBgTex=tex;
+      curHdriRes=res;
+      applyHDRIState(c);
+    },undefined,err=>{
+      if(fallbackTo1k&&res!=='1k'){loadAtRes('1k',false);return;}
+      console.warn('HDRI load failed:',err);
+      scene.environment=null;scene.background=null;
+    });
+  };
+  loadAtRes(wantedRes,true);
 }
 
 // ═══ UI UPDATE ═══
@@ -1252,12 +1312,17 @@ function U(){
   });
 
   // HDRI
-  loadHDRI(c.hdri);
+  loadHDRI(c.hdri,c);
   if(c.hdri){
-    if(c.hdriBg&&scene.environment){scene.background=scene.environment;scene.fog.density=0;}
+    if(c.hdriBg){scene.fog.density=0;}
     else{scene.background=null;scene.fog.density=c.fog?(c.fogD||0.012):0;}
-    R.toneMappingExposure=c.gExp*c.hdriInt;
-  }else{scene.background=null;scene.fog.density=c.fog?(c.fogD||0.012):0;R.toneMappingExposure=c.gExp;}
+    const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
+    R.toneMappingExposure=c.gExp*(refMode==='hdri'?c.hdriInt:1);
+  }else{
+    const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
+    scene.environment=refMode==='gradient'?getGradientEnvMap():null;
+    scene.background=null;scene.fog.density=c.fog?(c.fogD||0.012):0;R.toneMappingExposure=c.gExp;
+  }
 
   // Logo
   if(logoEl&&logoEl.parentNode)logoEl.parentNode.removeChild(logoEl);
@@ -1778,6 +1843,29 @@ function switchAnim(clipIdx){
 function camP(btn){document.querySelectorAll('#camPr .pb').forEach(b=>b.classList.remove('ac'));btn.classList.add('ac');$('cSpd').value=btn.dataset.s;$('cDst').value=btn.dataset.d;U();}
 function lightP(btn){document.querySelectorAll('#lightPr .pb').forEach(b=>b.classList.remove('ac'));btn.classList.add('ac');$('cK').value=btn.dataset.kc;$('kI').value=btn.dataset.ki;$('cR').value=btn.dataset.rc;$('rI').value=btn.dataset.ri;$('aI').value=btn.dataset.ai;$('lOrb').value=btn.dataset.lo;U();}
 
+function applyHdriPreset(name){
+  if(name==='bg8kNoRef'){
+    $('togHdriBg').classList.add('on');
+    $('togHdriBgSharp').classList.add('on');
+    $('hdriRefMode').value='none';
+    $('hdriRes').value='8k';
+    $('hdriInt').value=10;
+  }else if(name==='bg4kGradRef'){
+    $('togHdriBg').classList.add('on');
+    $('togHdriBgSharp').classList.add('on');
+    $('hdriRefMode').value='gradient';
+    $('hdriRes').value='4k';
+    $('hdriInt').value=10;
+  }else if(name==='bg2kHdriRef'){
+    $('togHdriBg').classList.add('on');
+    $('togHdriBgSharp').classList.remove('on');
+    $('hdriRefMode').value='hdri';
+    $('hdriRes').value='2k';
+    $('hdriInt').value=12;
+  }
+  U();
+}
+
 // ═══ GLOBAL PRESETS ═══
 const GPRESETS={
   vitrine:{
@@ -1846,7 +1934,9 @@ function globalP(name){
   const st=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
   st('togFloor',p.showFloor);st('togReflect',p.reflectFloor);
   st('togCine',p.cine);st('togGrain',p.grain);st('togVig',p.vig);st('togDust',p.dust);st('togLines',p.lines);
-  st('togBloom',p.bloom);st('togDof',p.dof);st('togHdriBg',p.hdriBg);
+  st('togBloom',p.bloom);st('togDof',p.dof);st('togHdriBg',p.hdriBg);st('togHdriBgSharp',p.hdriBgSharp!==false);
+  $('hdriRefMode').value=p.hdriRefMode||(p.hdriRef===false?'none':'hdri');
+  if(p.hdriRes)$('hdriRes').value=p.hdriRes;
   curHdriSlug='';
   U();
 }
@@ -2019,7 +2109,7 @@ function loadC_fromObj(c){
   const locked=_lockedKeys();
   if(locked.size>0){c=Object.fromEntries(Object.entries(c).filter(([k])=>!locked.has(k)));}
   // Direct map: config key → element ID (only for values stored AS-IS, no division)
-  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor',crowd3DRotOffset:'crowd3DRotOffset',appMode:'appMode',envPreset:'envPreset2',envFov:'envFov2',envCamMode:'envCamMode',envCouloirAngle:'envCouloirAngle'};
+  const map={title:'tT',sub:'tS',bl:'tBL',br:'tBR',live:'tLV',fontT:'fontT',tTsz:'tTsz',tSsz:'tSsz',tBsz:'tBsz',accent:'cA',bg:'cB',liveC:'cL',floorC:'cF',keyC:'cK',rimC:'cR',lOrb:'lOrb',camSpd:'cSpd',camDist:'cDst',cineH:'cineH',hdri:'hdri',hdriRes:'hdriRes',hdriRefMode:'hdriRefMode',logoPos:'logoPos',logoSz:'logoSz',txtAnim:'txtAnim',l2C:'cL2',l2Orb:'l2Orb',camMode:'camMode',wmTxt:'wmTxt',wmSz:'wmSz',wmOp:'wmOp',wmPos:'wmPos',audioVol:'aVol',vizScale:'vizScale',vizColor:'vizColor',liveSz:'liveSz',dustCount:'dustCount',lightPulse:'lightPulse',pulseForce:'pulseForce',linePos:'linePos',bgAnim:'bgAnim',bgOpacity:'bgOpacity',bgMode:'bgMode',bgScale:'bgScale',bgGapH:'bgGapH',bgGapV:'bgGapV',bgBlur:'bgBlur',crowdDensity:'crowdDensity',crowdScale:'crowdScale',crowdGap:'crowdGap',crowdHeight:'crowdHeight',crowdDist:'crowdDist',flashFreq:'flashFreq',cdMin:'cdMin',cdSize:'cdSize',cdText:'cdText',colorFilter:'colorFilter',filterInt:'filterInt',filterColor:'filterColor',transType:'transType',crowdMode:'crowdMode',crowd3DColor:'crowd3DColor',crowd3DRotOffset:'crowd3DRotOffset',appMode:'appMode',envPreset:'envPreset2',envFov:'envFov2',envCamMode:'envCamMode',envCouloirAngle:'envCouloirAngle'};
   Object.keys(map).forEach(k=>{if(c[k]!=null)$(map[k]).value=c[k];});
   // Values stored divided — must multiply back for slider
   if(c.tOp!=null)$('tOp').value=Math.round(c.tOp*100);
@@ -2071,7 +2161,7 @@ function loadC_fromObj(c){
   }
   // Toggles
   const stg=(id,v)=>{const el=$(id);if(v&&!el.classList.contains('on'))el.classList.add('on');if(!v&&el.classList.contains('on'))el.classList.remove('on');};
-  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash','countdown:togCountdown','crowd3DRand:togCrowd3DRand'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
+  ['cine:togCine','grain:togGrain','vig:togVig','dust:togDust','lines:togLines','bloom:togBloom','dof:togDof','fog:togFog','hdriBg:togHdriBg','hdriBgSharp:togHdriBgSharp','showFloor:togFloor','reflectFloor:togReflect','wm:togWm','audioViz:togAudioViz','audioLoop:togLoop','showDot:togDot','showTrackName:togTrackName','crowd:togCrowd','crowdRand:togCrowdRand','flash:togFlash','countdown:togCountdown','crowd3DRand:togCrowd3DRand'].forEach(p=>{const[k,id]=p.split(':');if(c[k]!=null)stg(id,c[k]);});
   updateCrowdModeUI();
   updateAppModeUI();
   // Ratio aperçu
@@ -2282,7 +2372,7 @@ const _lockKeys={
   eclairage:['keyC','keyI','kDist','rimC','rimI','l2C','l2I','l2Orb','ambI','lOrb','gExp'],
   camera:['camSpd','camDist','cLookY','camMode','cutDur','orbitH','travelAmp','handIntensity'],
   effets:['bloom','bloomI','dof','dofAp','fog','fogD','cine','cineH','grain','vig','dust','dustCount','dustSize','lines','linePos'],
-  hdri:['hdri','hdriBg','hdriInt'],
+  hdri:['hdri','hdriBg','hdriBgSharp','hdriRefMode','hdriRef','hdriRes','hdriInt'],
   audio:['audioVol','audioViz','audioLoop','lightPulse','pulseForce','pulseBright','pulseDecay','pulseColors','vizScale','vizColor','showTrackName'],
 };
 // Clés verrouillées à plat
@@ -2511,11 +2601,18 @@ const bl=`<div style="display:flex;align-items:flex-end;gap:10px">${lg_('bl')}<d
 const br=`<div style="display:flex;align-items:flex-end;gap:10px"><div class="br">${c.br}</div>${lg_('br')}</div>`;
 const cP=c.cine?`calc(${c.cineH}vh + 2vh)`:'5.5vh';
 const matCode=c.mat!=='original'?`G.traverse(function(x){if(x.isMesh)x.material=MATS.${c.mat}.clone();});`:'';
+const popupRefMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
+const popupUseHdriRef=popupRefMode==='hdri';
+const popupUseGradRef=popupRefMode==='gradient';
+const popupExp=(c.gExp*(popupUseHdriRef?c.hdriInt:1));
+const popupBgFromHdri=c.hdriBg?(c.hdriBgSharp||!popupUseHdriRef?'scene.background=tex;':'scene.background=em;'):'scene.background=null;';
+const popupBgFromHdriFallback=c.hdriBg?(c.hdriBgSharp||!popupUseHdriRef?'scene.background=tex;':'scene.background=em2;'):'scene.background=null;';
+const popupGradCode=popupUseGradRef?`(function(){var cv=document.createElement('canvas');cv.width=1024;cv.height=512;var ctx=cv.getContext('2d');var g=ctx.createLinearGradient(0,0,0,cv.height);g.addColorStop(0,'#f1e1c2');g.addColorStop(0.35,'#b9cfe0');g.addColorStop(1,'#2d3948');ctx.fillStyle=g;ctx.fillRect(0,0,cv.width,cv.height);var t=new THREE.CanvasTexture(cv);t.mapping=THREE.EquirectangularReflectionMapping;scene.environment=pmrem.fromEquirectangular(t).texture;})();`:'';
 const hdriCode=c.hdri==='custom'?`
 var hBuf=null;try{hBuf=window.opener&&window.opener.getState&&window.opener.getState().customHdriBuf;}catch(e){}
 if(hBuf){var blob=new Blob([hBuf]);var hurl=URL.createObjectURL(blob);
-new THREE.RGBELoader().load(hurl,function(tex){var em=pmrem.fromEquirectangular(tex).texture;scene.environment=em;${c.hdriBg?'scene.background=em;':''}tex.dispose();URL.revokeObjectURL(hurl);R.toneMappingExposure=${c.gExp*c.hdriInt};});}
-`:c.hdri?`new THREE.RGBELoader().load('${HDRI_BASE}${c.hdri}_1k.hdr',function(tex){var em=pmrem.fromEquirectangular(tex).texture;scene.environment=em;${c.hdriBg?'scene.background=em;':''}tex.dispose();R.toneMappingExposure=${c.gExp*c.hdriInt};});`:`R.toneMappingExposure=${c.gExp};`;
+new THREE.RGBELoader().load(hurl,function(tex){tex.mapping=THREE.EquirectangularReflectionMapping;var em=null;${popupUseHdriRef?'em=pmrem.fromEquirectangular(tex).texture;scene.environment=em;':'scene.environment=null;'}${popupBgFromHdri}URL.revokeObjectURL(hurl);${popupGradCode}R.toneMappingExposure=${popupExp};});}
+`:c.hdri?`new THREE.RGBELoader().load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/${c.hdriRes||'1k'}/${c.hdri}_${c.hdriRes||'1k'}.hdr',function(tex){tex.mapping=THREE.EquirectangularReflectionMapping;var em=null;${popupUseHdriRef?'em=pmrem.fromEquirectangular(tex).texture;scene.environment=em;':'scene.environment=null;'}${popupBgFromHdri}${popupGradCode}R.toneMappingExposure=${popupExp};},undefined,function(){new THREE.RGBELoader().load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/${c.hdri}_1k.hdr',function(tex){tex.mapping=THREE.EquirectangularReflectionMapping;var em2=null;${popupUseHdriRef?'em2=pmrem.fromEquirectangular(tex).texture;scene.environment=em2;':'scene.environment=null;'}${popupBgFromHdriFallback}${popupGradCode}R.toneMappingExposure=${popupExp};});});`:`${popupGradCode}R.toneMappingExposure=${c.gExp};`;
 
 const animName=c.txtAnim==='none'?'none':c.txtAnim==='fade'?'txF':c.txtAnim==='slide-up'?'txSU':c.txtAnim==='slide-left'?'txSL':'txTW';
 const aDur=c.animDur+'s';
