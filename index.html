@@ -2574,7 +2574,10 @@ function anim(t){
   }else if(S._wantHdriBg&&curHdriBgFinal){
     scene.background=curHdriBgFinal;
   }
-  if(bloomPass.enabled||bokehPass.enabled)composer.render();
+  // Bypass composer when HDRI background is active to avoid pass-chain clears.
+  const forceDirectHdri=!!(liveCfg.hdri&&liveCfg.hdriBg);
+  if(forceDirectHdri)R.render(scene,cam);
+  else if(bloomPass.enabled||bokehPass.enabled)composer.render();
   else R.render(scene,cam);
 }
 anim();
