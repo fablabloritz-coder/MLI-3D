@@ -1016,7 +1016,8 @@ function setMat(btn){
 }
 
 // ═══ HDRI SYSTEM ═══
-let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,curHdriBgFinal=null,curHdriBgCubeRT=null,gradEnvTex=null,gradEnvMap=null;
+let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,curHdriBgFinal=null,curHdriBgCubeRT=null,curHdriBgCubeSize=0,gradEnvTex=null,gradEnvMap=null;
+let _hdriLoadingKey=null; // prevents anim() from re-triggering loads mid-flight
 function setHdriStatus(msg,isErr){
   const el=$('hdriStatus');
   if(!el)return;
@@ -1056,13 +1057,14 @@ function hdriResToCubeSize(res){
   return 512;
 }
 function buildHdriBgCube(tex,res){
-  if(curHdriBgCubeRT){curHdriBgCubeRT.dispose();curHdriBgCubeRT=null;}
+  if(curHdriBgCubeRT){curHdriBgCubeRT.dispose();curHdriBgCubeRT=null;curHdriBgCubeSize=0;}
   const size=hdriResToCubeSize(res||'4k');
-  console.log('[HDRI] Building '+size+'px cubemap from equirect');
+  console.log('[HDRI] Building '+size+'px cubemap from equirect (res='+res+')');
   try{
     const rt=new THREE.WebGLCubeRenderTarget(size,{generateMipmaps:false,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
     rt.fromEquirectangularTexture(R,tex);
     curHdriBgCubeRT=rt;
+    curHdriBgCubeSize=size;
     console.log('[HDRI] Cubemap built OK, '+size+'px per face');
   }catch(e){console.warn('[HDRI] Cubemap build failed, falling back to equirect:',e);}
 }
@@ -1070,7 +1072,8 @@ function resetHDRIResources(){
   if(curHdriEnvMap&&curHdriEnvMap.dispose)curHdriEnvMap.dispose();
   if(curHdriBgTex&&curHdriBgTex.dispose)curHdriBgTex.dispose();
   if(curHdriBgCubeRT&&curHdriBgCubeRT.dispose)curHdriBgCubeRT.dispose();
-  curHdriEnvMap=null;curHdriBgTex=null;curHdriBgFinal=null;curHdriBgCubeRT=null;
+  curHdriEnvMap=null;curHdriBgTex=null;curHdriBgFinal=null;curHdriBgCubeRT=null;curHdriBgCubeSize=0;
+  _hdriLoadingKey=null;
 }
 function getGradientEnvMap(){
   if(gradEnvMap)return gradEnvMap;
@@ -1131,7 +1134,12 @@ function loadHDRI(slug,c){
       return;
     }
     if(!S.customHdriBuf){scene.environment=null;scene.background=null;S._wantHdriBg=false;setHdriStatus('custom manquant: recharge le fichier .hdr',true);return;}
-    if(curHdriSlug==='custom'&&curHdriBgTex){applyHDRIState(c);return;}
+    if(curHdriSlug==='custom'&&curHdriBgTex){
+      // Rebuild cube if resolution changed
+      const wantedSize=hdriResToCubeSize(c.hdriRes||'4k');
+      if(curHdriBgCubeSize!==wantedSize)buildHdriBgCube(curHdriBgTex,c.hdriRes||'4k');
+      applyHDRIState(c);return;
+    }
     resetHDRIResources();
     curHdriSlug='custom';curHdriRes='custom';
     setHdriStatus('chargement custom...',false);
@@ -1150,23 +1158,25 @@ function loadHDRI(slug,c){
   }
 
   const wantedRes=(c.hdriRes||'1k');
-  // Always reload if resolution changed, even if slug is same
-  const resChanged=(curHdriRes!==wantedRes);
-  if(slug===curHdriSlug&&!resChanged&&curHdriBgTex){
-    console.log('[HDRI] Cache hit, slug='+slug+', res='+wantedRes);
-    applyHDRIState(c);
-    return;
+  const loadKey=slug+'@'+wantedRes;
+  // Cache hit: same slug+res already loaded
+  if(slug===curHdriSlug&&curHdriRes===wantedRes&&curHdriBgTex){
+    applyHDRIState(c);return;
   }
-  console.log('[HDRI] Loading slug='+slug+', res='+wantedRes+', resChanged='+resChanged);
+  // Guard: already loading this exact slug+res
+  if(_hdriLoadingKey===loadKey)return;
+  console.log('[HDRI] Loading slug='+slug+', res='+wantedRes);
+  _hdriLoadingKey=loadKey;
   resetHDRIResources();
   curHdriSlug=slug;curHdriRes=wantedRes;
-  setHdriStatus('loading '+slug+' ('+wantedRes+')...',false);
+  setHdriStatus('chargement '+slug+' ('+wantedRes+')...',false);
 
   const loadAtRes=(res,fallbackTo1k)=>{
     const url='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/'+res+'/'+slug+'_'+res+'.hdr';
     console.log('[HDRI] Requesting URL: '+url);
     new THREE.RGBELoader().load(url,tex=>{
       console.log('[HDRI] Loaded '+res+', texSize='+tex.image.width+'x'+tex.image.height);
+      _hdriLoadingKey=null;
       prepareHdriTexture(tex);
       curHdriBgTex=tex;
       buildHdriBgCube(tex,res);
@@ -1176,6 +1186,7 @@ function loadHDRI(slug,c){
       applyHDRIState(window.getConfig());
     },undefined,err=>{
       console.warn('[HDRI] Load failed at '+res+': '+err.message);
+      _hdriLoadingKey=null;
       if(fallbackTo1k&&res!=='1k'){console.log('[HDRI] Fallback to 1K');loadAtRes('1k',false);return;}
       console.warn('[HDRI] Final failure');
       setHdriStatus('error loading '+slug,true);
@@ -2622,8 +2633,8 @@ function anim(t){
   if(liveCfg.hdri&&liveCfg.hdriBg){
     // Disable animated bg takeover while HDRI background is requested
     S._bgAnimType=null;
-    // Reload if: no texture, slug changed, OR resolution changed
-    const needsReload=!curHdriBgTex||curHdriSlug!==liveCfg.hdri||(liveCfg.hdriRes&&curHdriRes!==liveCfg.hdriRes);
+    // Reload only when needed and not already loading
+    const needsReload=(!curHdriBgTex&&!_hdriLoadingKey)||curHdriSlug!==liveCfg.hdri||(liveCfg.hdri!=='custom'&&liveCfg.hdriRes&&curHdriRes!==(liveCfg.hdriRes||'1k')&&!_hdriLoadingKey);
     if(needsReload)loadHDRI(liveCfg.hdri,liveCfg);
     if(curHdriBgTex||curHdriBgFinal){
       scene.background=curHdriBgTex||curHdriBgFinal;
