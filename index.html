@@ -586,7 +586,8 @@ const S={get modelBuf(){return SLOTS[0].buf;},set modelBuf(v){SLOTS[0].buf=v;},
   envBuf:null,envName:'',envType:'glb',
   _bgAnimCanvas:null,_bgAnimTex:null,_bgAnimType:null,_bgAnimT:0,
   _bgVid2:null,_bgVidCanvas:null,_bgVidTex2:null,_bgVidNeedsCanvasDraw:false,_bgVidLast:0,_bgVidTinyW:64,_bgVidTinyH:64,
-  _bgImgEl:null,_bgImgReady:false,_bgCacheKey:'',_bgSphere:null,_crowdImg:null,crowdURL:null
+  _bgImgEl:null,_bgImgReady:false,_bgCacheKey:'',_bgSphere:null,_crowdImg:null,crowdURL:null,
+  _wantHdriBg:false
 };
 
 // Per-slot config from UI
@@ -1036,18 +1037,22 @@ function getGradientEnvMap(){
   return gradEnvMap;
 }
 function applyHDRIState(c){
+  S._wantHdriBg=!!(c.hdri&&c.hdriBg);
   const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
   if(refMode==='gradient')scene.environment=getGradientEnvMap();
   else if(refMode==='hdri'&&c.hdri){
     if(!curHdriEnvMap&&curHdriBgTex)curHdriEnvMap=pmrem.fromEquirectangular(curHdriBgTex).texture;
     scene.environment=curHdriEnvMap;
   }else scene.environment=null;
-  if(!c.hdri){scene.background=null;return;}
+  if(!c.hdri){
+    scene.background=null;
+    return;
+  }
   if(c.hdriBg){
-    const useSharp=c.hdriBgSharp||refMode!=='hdri'||!scene.environment;
-    const canUseEnvBg=!useSharp&&scene.environment&&scene.environment.isTexture&&scene.environment.mapping!==THREE.CubeUVReflectionMapping;
-    scene.background=canUseEnvBg?scene.environment:curHdriBgTex;
-  }else scene.background=null;
+    scene.background=curHdriBgTex||null;
+  }else{
+    scene.background=null;
+  }
 }
 function loadHDRI(slug,c){
   if(!slug||slug==='custom'){
@@ -1055,10 +1060,10 @@ function loadHDRI(slug,c){
       resetHDRIResources();
       const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
       scene.environment=refMode==='gradient'?getGradientEnvMap():null;
-      scene.background=null;curHdriSlug='';
+      scene.background=null;curHdriSlug='';S._wantHdriBg=false;
       return;
     }
-    if(!S.customHdriBuf){scene.environment=null;scene.background=null;return;}
+    if(!S.customHdriBuf){scene.environment=null;scene.background=null;S._wantHdriBg=false;return;}
     if(curHdriSlug==='custom'&&curHdriBgTex){applyHDRIState(c);return;}
     resetHDRIResources();
     curHdriSlug='custom';curHdriRes='custom';
@@ -1070,7 +1075,7 @@ function loadHDRI(slug,c){
       tex.magFilter=THREE.LinearFilter;
       tex.minFilter=THREE.LinearMipmapLinearFilter;
       curHdriBgTex=tex;
-      applyHDRIState(c);
+      applyHDRIState(window.getConfig());
       URL.revokeObjectURL(url);
     },undefined,err=>{console.warn('Custom HDRI failed:',err);URL.revokeObjectURL(url);});
     return;
@@ -1089,11 +1094,11 @@ function loadHDRI(slug,c){
       tex.minFilter=THREE.LinearMipmapLinearFilter;
       curHdriBgTex=tex;
       curHdriRes=res;
-      applyHDRIState(c);
+      applyHDRIState(window.getConfig());
     },undefined,err=>{
       if(fallbackTo1k&&res!=='1k'){loadAtRes('1k',false);return;}
       console.warn('HDRI load failed:',err);
-      scene.environment=null;scene.background=null;
+      scene.environment=null;scene.background=null;S._wantHdriBg=false;
     });
   };
   loadAtRes(wantedRes,true);
@@ -2493,6 +2498,7 @@ function anim(t){
     cam.lookAt(lk);
   }
 
+
   // Update all slot mixers + auto-spin
   for(let si=0;si<3;si++){
     const sl=SLOTS[si];
@@ -2529,6 +2535,8 @@ function anim(t){
     else if(avg>28&&adaptPR<1.5){adaptPR=Math.min(1.5,adaptPR+0.125);R.setPixelRatio(adaptPR);}
   }
 
+  // Enforce HDRI background every frame — prevents any U() overwrites from persisting
+  if(S._wantHdriBg&&curHdriBgTex)scene.background=curHdriBgTex;
   if(bloomPass.enabled||bokehPass.enabled)composer.render();
   else R.render(scene,cam);
 }
