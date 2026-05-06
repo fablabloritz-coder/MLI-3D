@@ -290,6 +290,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 </select></div>
 <div id="hdriDrop" class="drop" style="margin-bottom:6px"><div class="lb">HDRI personnalisé (<strong>.hdr</strong>)</div><input type="file" accept=".hdr,.exr" style="display:none" id="hdriIn"></div>
 <div id="hdriStatus" class="fh" style="text-align:left;margin:-2px 0 6px 0;color:#9aa3ad">HDRI: inactif</div>
+<div id="hdriDiag" class="fh" style="text-align:left;margin:-2px 0 6px 0;color:#6f7a86;font-size:10px">diag: -</div>
 <div class="tr"><span>Afficher en fond</span><button class="tg" id="togHdriBg" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Fond 360 net</span><button class="tg on" id="togHdriBgSharp" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Reflets</label><select id="hdriRefMode"><option value="none">Aucun (léger)</option><option value="hdri" selected>HDRI</option><option value="gradient">Dégradé (léger)</option></select></div>
@@ -1022,6 +1023,21 @@ function setHdriStatus(msg,isErr){
   el.textContent='HDRI: '+msg;
   el.style.color=isErr?'#e87c7c':'#9aa3ad';
 }
+function setHdriDiag(c){
+  const el=$('hdriDiag');
+  if(!el)return;
+  const bgReq=!!(c&&c.hdri&&c.hdriBg);
+  const val=[
+    'mode='+(c&&c.hdri?c.hdri:'none'),
+    'slug='+(curHdriSlug||'-'),
+    'tex='+(!!curHdriBgTex),
+    'env='+(!!curHdriEnvMap),
+    'bgFinal='+(!!curHdriBgFinal),
+    'bgReq='+(bgReq),
+    'bgAnim='+(S._bgAnimType||'none')
+  ].join(' | ');
+  el.textContent='diag: '+val;
+}
 function resetHDRIResources(){
   if(curHdriEnvMap&&curHdriEnvMap.dispose)curHdriEnvMap.dispose();
   if(curHdriBgTex&&curHdriBgTex.dispose)curHdriBgTex.dispose();
@@ -1057,6 +1073,7 @@ function applyHDRIState(c){
     curHdriBgFinal=null;
     scene.background=null;
     setHdriStatus('inactif',false);
+    setHdriDiag(c);
     return;
   }
   if(c.hdriBg){
@@ -1064,10 +1081,12 @@ function applyHDRIState(c){
     curHdriBgFinal=useRawBg?(curHdriBgTex||curHdriEnvMap||null):(curHdriEnvMap||curHdriBgTex||null);
     scene.background=curHdriBgFinal;
     setHdriStatus(curHdriBgFinal?('fond OK ('+(c.hdriRes||'1k')+')'):'chargement...',false);
+    setHdriDiag(c);
   }else{
     curHdriBgFinal=null;
     scene.background=null;
     setHdriStatus('fond désactivé',false);
+    setHdriDiag(c);
   }
 }
 function loadHDRI(slug,c){
@@ -2559,6 +2578,7 @@ function anim(t){
 
   // Self-healing HDRI path: trust live UI state and force background every frame
   const liveCfg=window.getConfig();
+  setHdriDiag(liveCfg);
   if(liveCfg.hdri&&liveCfg.hdriBg){
     // Disable animated bg takeover while HDRI background is requested
     S._bgAnimType=null;
