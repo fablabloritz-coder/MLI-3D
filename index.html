@@ -2557,8 +2557,23 @@ function anim(t){
     else if(avg>28&&adaptPR<1.5){adaptPR=Math.min(1.5,adaptPR+0.125);R.setPixelRatio(adaptPR);}
   }
 
-  // Enforce HDRI background every frame (stable texture chosen by applyHDRIState)
-  if(S._wantHdriBg&&curHdriBgFinal)scene.background=curHdriBgFinal;
+  // Self-healing HDRI path: trust live UI state and force background every frame
+  const liveCfg=window.getConfig();
+  if(liveCfg.hdri&&liveCfg.hdriBg){
+    // Disable animated bg takeover while HDRI background is requested
+    S._bgAnimType=null;
+    if(!curHdriBgTex||curHdriSlug!==liveCfg.hdri)loadHDRI(liveCfg.hdri,liveCfg);
+    if(curHdriBgTex||curHdriBgFinal){
+      scene.background=curHdriBgTex||curHdriBgFinal;
+      scene.fog.density=0;
+      const refMode=liveCfg.hdriRefMode||(liveCfg.hdriRef===false?'none':'hdri');
+      if(refMode==='gradient')scene.environment=getGradientEnvMap();
+      else if(refMode==='hdri')scene.environment=curHdriEnvMap||scene.environment;
+      else scene.environment=null;
+    }
+  }else if(S._wantHdriBg&&curHdriBgFinal){
+    scene.background=curHdriBgFinal;
+  }
   if(bloomPass.enabled||bokehPass.enabled)composer.render();
   else R.render(scene,cam);
 }
