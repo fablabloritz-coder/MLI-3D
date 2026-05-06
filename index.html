@@ -1045,7 +1045,8 @@ function applyHDRIState(c){
   if(!c.hdri){scene.background=null;return;}
   if(c.hdriBg){
     const useSharp=c.hdriBgSharp||refMode!=='hdri'||!scene.environment;
-    scene.background=useSharp?curHdriBgTex:scene.environment;
+    const canUseEnvBg=!useSharp&&scene.environment&&scene.environment.isTexture&&scene.environment.mapping!==THREE.CubeUVReflectionMapping;
+    scene.background=canUseEnvBg?scene.environment:curHdriBgTex;
   }else scene.background=null;
 }
 function loadHDRI(slug,c){
