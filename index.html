@@ -1040,10 +1040,11 @@ function setHdriDiag(c){
 }
 function prepareHdriTexture(tex){
   tex.mapping=THREE.EquirectangularReflectionMapping;
-  // RGBE/HDR backgrounds can turn black with mipmap filters on some drivers.
-  tex.generateMipmaps=false;
-  tex.minFilter=THREE.LinearFilter;
+  // Enable mipmaps + trilinear + anisotropic filtering for smooth HDR sampling
+  tex.generateMipmaps=true;
+  tex.minFilter=THREE.LinearMipmapLinearFilter;
   tex.magFilter=THREE.LinearFilter;
+  tex.anisotropy=16;
   tex.needsUpdate=true;
   return tex;
 }
