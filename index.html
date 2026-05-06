@@ -1014,11 +1014,11 @@ function setMat(btn){
 }
 
 // ═══ HDRI SYSTEM ═══
-let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,gradEnvTex=null,gradEnvMap=null;
+let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,curHdriBgFinal=null,gradEnvTex=null,gradEnvMap=null;
 function resetHDRIResources(){
   if(curHdriEnvMap&&curHdriEnvMap.dispose)curHdriEnvMap.dispose();
   if(curHdriBgTex&&curHdriBgTex.dispose)curHdriBgTex.dispose();
-  curHdriEnvMap=null;curHdriBgTex=null;
+  curHdriEnvMap=null;curHdriBgTex=null;curHdriBgFinal=null;
 }
 function getGradientEnvMap(){
   if(gradEnvMap)return gradEnvMap;
@@ -1038,35 +1038,26 @@ function getGradientEnvMap(){
 }
 function applyHDRIState(c){
   S._wantHdriBg=!!(c.hdri&&c.hdriBg);
-  if(!S._hdriSphere){
-    // Radius must stay below camera.far (500) or the sphere gets clipped and appears black
-    const g=new THREE.SphereGeometry(200,48,32);
-    const m=new THREE.MeshBasicMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,fog:false,toneMapped:true});
-    S._hdriSphere=new THREE.Mesh(g,m);
-    S._hdriSphere.renderOrder=-1000;
-    scene.add(S._hdriSphere);
-  }
   const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
   if(refMode==='gradient')scene.environment=getGradientEnvMap();
   else if(refMode==='hdri'&&c.hdri){
-    if(!curHdriEnvMap&&curHdriBgTex)curHdriEnvMap=pmrem.fromEquirectangular(curHdriBgTex).texture;
+    if(!curHdriEnvMap&&curHdriBgTex){
+      try{curHdriEnvMap=pmrem.fromEquirectangular(curHdriBgTex).texture;}catch(e){console.warn('PMREM build failed:',e);}
+    }
     scene.environment=curHdriEnvMap;
   }else scene.environment=null;
   if(!c.hdri){
+    curHdriBgFinal=null;
     scene.background=null;
-    if(S._hdriSphere)S._hdriSphere.visible=false;
     return;
   }
   if(c.hdriBg){
-    scene.background=curHdriBgTex||null;
-    if(S._hdriSphere){
-      S._hdriSphere.material.map=curHdriBgTex||null;
-      S._hdriSphere.material.needsUpdate=true;
-      S._hdriSphere.visible=!!curHdriBgTex;
-    }
+    const preferSharp=!!c.hdriBgSharp&&c.hdri!=='custom';
+    curHdriBgFinal=preferSharp?(curHdriBgTex||curHdriEnvMap||null):(curHdriEnvMap||curHdriBgTex||null);
+    scene.background=curHdriBgFinal;
   }else{
+    curHdriBgFinal=null;
     scene.background=null;
-    if(S._hdriSphere)S._hdriSphere.visible=false;
   }
 }
 function loadHDRI(slug,c){
@@ -1090,6 +1081,7 @@ function loadHDRI(slug,c){
       tex.magFilter=THREE.LinearFilter;
       tex.minFilter=THREE.LinearMipmapLinearFilter;
       curHdriBgTex=tex;
+      try{curHdriEnvMap=pmrem.fromEquirectangular(tex).texture;}catch(e){console.warn('Custom PMREM build failed:',e);}
       applyHDRIState(window.getConfig());
       URL.revokeObjectURL(url);
     },undefined,err=>{console.warn('Custom HDRI failed:',err);URL.revokeObjectURL(url);});
@@ -1108,6 +1100,7 @@ function loadHDRI(slug,c){
       tex.magFilter=THREE.LinearFilter;
       tex.minFilter=THREE.LinearMipmapLinearFilter;
       curHdriBgTex=tex;
+      try{curHdriEnvMap=pmrem.fromEquirectangular(tex).texture;}catch(e){console.warn('PMREM build failed:',e);}
       curHdriRes=res;
       applyHDRIState(window.getConfig());
     },undefined,err=>{
@@ -2550,20 +2543,8 @@ function anim(t){
     else if(avg>28&&adaptPR<1.5){adaptPR=Math.min(1.5,adaptPR+0.125);R.setPixelRatio(adaptPR);}
   }
 
-  // Enforce HDRI background every frame — robust path via dedicated sphere
-  if(S._hdriSphere){
-    S._hdriSphere.position.copy(cam.position);
-    if(S._wantHdriBg&&curHdriBgTex){
-      if(S._hdriSphere.material.map!==curHdriBgTex){
-        S._hdriSphere.material.map=curHdriBgTex;
-        S._hdriSphere.material.needsUpdate=true;
-      }
-      S._hdriSphere.visible=true;
-      scene.background=curHdriBgTex;
-    }else{
-      S._hdriSphere.visible=false;
-    }
-  }
+  // Enforce HDRI background every frame (stable texture chosen by applyHDRIState)
+  if(S._wantHdriBg&&curHdriBgFinal)scene.background=curHdriBgFinal;
   if(bloomPass.enabled||bokehPass.enabled)composer.render();
   else R.render(scene,cam);
 }
