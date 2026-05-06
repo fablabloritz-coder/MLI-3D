@@ -1039,8 +1039,9 @@ function getGradientEnvMap(){
 function applyHDRIState(c){
   S._wantHdriBg=!!(c.hdri&&c.hdriBg);
   if(!S._hdriSphere){
-    const g=new THREE.SphereGeometry(1200,48,32);
-    const m=new THREE.MeshBasicMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,fog:false,toneMapped:false});
+    // Radius must stay below camera.far (500) or the sphere gets clipped and appears black
+    const g=new THREE.SphereGeometry(200,48,32);
+    const m=new THREE.MeshBasicMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,fog:false,toneMapped:true});
     S._hdriSphere=new THREE.Mesh(g,m);
     S._hdriSphere.renderOrder=-1000;
     scene.add(S._hdriSphere);
