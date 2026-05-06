@@ -289,6 +289,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <optgroup label="Personnalisé"><option value="custom" id="hdriCustomOpt" disabled>— charger ci-dessous —</option></optgroup>
 </select></div>
 <div id="hdriDrop" class="drop" style="margin-bottom:6px"><div class="lb">HDRI personnalisé (<strong>.hdr</strong>)</div><input type="file" accept=".hdr,.exr" style="display:none" id="hdriIn"></div>
+<div id="hdriStatus" class="fh" style="text-align:left;margin:-2px 0 6px 0;color:#9aa3ad">HDRI: inactif</div>
 <div class="tr"><span>Afficher en fond</span><button class="tg" id="togHdriBg" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Fond 360 net</span><button class="tg on" id="togHdriBgSharp" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Reflets</label><select id="hdriRefMode"><option value="none">Aucun (léger)</option><option value="hdri" selected>HDRI</option><option value="gradient">Dégradé (léger)</option></select></div>
@@ -1015,6 +1016,12 @@ function setMat(btn){
 
 // ═══ HDRI SYSTEM ═══
 let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,curHdriBgFinal=null,gradEnvTex=null,gradEnvMap=null;
+function setHdriStatus(msg,isErr){
+  const el=$('hdriStatus');
+  if(!el)return;
+  el.textContent='HDRI: '+msg;
+  el.style.color=isErr?'#e87c7c':'#9aa3ad';
+}
 function resetHDRIResources(){
   if(curHdriEnvMap&&curHdriEnvMap.dispose)curHdriEnvMap.dispose();
   if(curHdriBgTex&&curHdriBgTex.dispose)curHdriBgTex.dispose();
@@ -1049,15 +1056,18 @@ function applyHDRIState(c){
   if(!c.hdri){
     curHdriBgFinal=null;
     scene.background=null;
+    setHdriStatus('inactif',false);
     return;
   }
   if(c.hdriBg){
-    const preferSharp=!!c.hdriBgSharp&&c.hdri!=='custom';
-    curHdriBgFinal=preferSharp?(curHdriBgTex||curHdriEnvMap||null):(curHdriEnvMap||curHdriBgTex||null);
+    const useRawBg=(!!c.hdriBgSharp)||c.hdri==='custom'||refMode==='none';
+    curHdriBgFinal=useRawBg?(curHdriBgTex||curHdriEnvMap||null):(curHdriEnvMap||curHdriBgTex||null);
     scene.background=curHdriBgFinal;
+    setHdriStatus(curHdriBgFinal?('fond OK ('+(c.hdriRes||'1k')+')'):'chargement...',false);
   }else{
     curHdriBgFinal=null;
     scene.background=null;
+    setHdriStatus('fond désactivé',false);
   }
 }
 function loadHDRI(slug,c){
@@ -1067,12 +1077,14 @@ function loadHDRI(slug,c){
       const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
       scene.environment=refMode==='gradient'?getGradientEnvMap():null;
       scene.background=null;curHdriSlug='';S._wantHdriBg=false;
+      setHdriStatus('aucun',false);
       return;
     }
-    if(!S.customHdriBuf){scene.environment=null;scene.background=null;S._wantHdriBg=false;return;}
+    if(!S.customHdriBuf){scene.environment=null;scene.background=null;S._wantHdriBg=false;setHdriStatus('custom manquant: recharge le fichier .hdr',true);return;}
     if(curHdriSlug==='custom'&&curHdriBgTex){applyHDRIState(c);return;}
     resetHDRIResources();
     curHdriSlug='custom';curHdriRes='custom';
+    setHdriStatus('chargement custom...',false);
     const loader=new THREE.RGBELoader();
     const blob=new Blob([S.customHdriBuf]);
     const url=URL.createObjectURL(blob);
@@ -1084,7 +1096,7 @@ function loadHDRI(slug,c){
       try{curHdriEnvMap=pmrem.fromEquirectangular(tex).texture;}catch(e){console.warn('Custom PMREM build failed:',e);}
       applyHDRIState(window.getConfig());
       URL.revokeObjectURL(url);
-    },undefined,err=>{console.warn('Custom HDRI failed:',err);URL.revokeObjectURL(url);});
+    },undefined,err=>{console.warn('Custom HDRI failed:',err);setHdriStatus('erreur chargement custom',true);URL.revokeObjectURL(url);});
     return;
   }
 
@@ -1092,6 +1104,7 @@ function loadHDRI(slug,c){
   if(slug===curHdriSlug&&wantedRes===curHdriRes&&curHdriBgTex){applyHDRIState(c);return;}
   resetHDRIResources();
   curHdriSlug=slug;curHdriRes=wantedRes;
+  setHdriStatus('chargement '+slug+' ('+wantedRes+')...',false);
 
   const loadAtRes=(res,fallbackTo1k)=>{
     const url='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/'+res+'/'+slug+'_'+res+'.hdr';
@@ -1106,6 +1119,7 @@ function loadHDRI(slug,c){
     },undefined,err=>{
       if(fallbackTo1k&&res!=='1k'){loadAtRes('1k',false);return;}
       console.warn('HDRI load failed:',err);
+      setHdriStatus('erreur chargement '+slug,true);
       scene.environment=null;scene.background=null;S._wantHdriBg=false;
     });
   };
