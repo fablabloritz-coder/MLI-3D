@@ -1038,6 +1038,13 @@ function getGradientEnvMap(){
 }
 function applyHDRIState(c){
   S._wantHdriBg=!!(c.hdri&&c.hdriBg);
+  if(!S._hdriSphere){
+    const g=new THREE.SphereGeometry(1200,48,32);
+    const m=new THREE.MeshBasicMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,fog:false,toneMapped:false});
+    S._hdriSphere=new THREE.Mesh(g,m);
+    S._hdriSphere.renderOrder=-1000;
+    scene.add(S._hdriSphere);
+  }
   const refMode=c.hdriRefMode||(c.hdriRef===false?'none':'hdri');
   if(refMode==='gradient')scene.environment=getGradientEnvMap();
   else if(refMode==='hdri'&&c.hdri){
@@ -1046,12 +1053,19 @@ function applyHDRIState(c){
   }else scene.environment=null;
   if(!c.hdri){
     scene.background=null;
+    if(S._hdriSphere)S._hdriSphere.visible=false;
     return;
   }
   if(c.hdriBg){
     scene.background=curHdriBgTex||null;
+    if(S._hdriSphere){
+      S._hdriSphere.material.map=curHdriBgTex||null;
+      S._hdriSphere.material.needsUpdate=true;
+      S._hdriSphere.visible=!!curHdriBgTex;
+    }
   }else{
     scene.background=null;
+    if(S._hdriSphere)S._hdriSphere.visible=false;
   }
 }
 function loadHDRI(slug,c){
@@ -2535,8 +2549,20 @@ function anim(t){
     else if(avg>28&&adaptPR<1.5){adaptPR=Math.min(1.5,adaptPR+0.125);R.setPixelRatio(adaptPR);}
   }
 
-  // Enforce HDRI background every frame — prevents any U() overwrites from persisting
-  if(S._wantHdriBg&&curHdriBgTex)scene.background=curHdriBgTex;
+  // Enforce HDRI background every frame — robust path via dedicated sphere
+  if(S._hdriSphere){
+    S._hdriSphere.position.copy(cam.position);
+    if(S._wantHdriBg&&curHdriBgTex){
+      if(S._hdriSphere.material.map!==curHdriBgTex){
+        S._hdriSphere.material.map=curHdriBgTex;
+        S._hdriSphere.material.needsUpdate=true;
+      }
+      S._hdriSphere.visible=true;
+      scene.background=curHdriBgTex;
+    }else{
+      S._hdriSphere.visible=false;
+    }
+  }
   if(bloomPass.enabled||bokehPass.enabled)composer.render();
   else R.render(scene,cam);
 }
