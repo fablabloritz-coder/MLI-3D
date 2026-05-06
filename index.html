@@ -294,7 +294,7 @@ body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;font-s
 <div class="tr"><span>Afficher en fond</span><button class="tg" id="togHdriBg" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="tr"><span>Fond 360 net</span><button class="tg on" id="togHdriBgSharp" onclick="this.classList.toggle('on');U()"></button></div>
 <div class="f"><label>Reflets</label><select id="hdriRefMode"><option value="none">Aucun (léger)</option><option value="hdri" selected>HDRI</option><option value="gradient">Dégradé (léger)</option></select></div>
-<div class="f"><label>Résolution (presets)</label><select id="hdriRes"><option value="1k">1K (rapide)</option><option value="2k" selected>2K (plus net)</option><option value="4k">4K (lourd)</option><option value="8k">8K (très lourd)</option></select></div>
+<div class="f"><label>Résolution (presets)</label><select id="hdriRes" onchange="U()"><option value="1k">1K (rapide)</option><option value="2k" selected>2K (plus net)</option><option value="4k">4K (lourd)</option><option value="8k">8K (très lourd)</option></select></div>
 <div class="f"><label>Presets rapides</label><div class="pr" style="gap:6px"><button class="pb" onclick="applyHdriPreset('bg8kNoRef')">Fond 8K sans reflets</button><button class="pb" onclick="applyHdriPreset('bg4kGradRef')">Fond 4K + reflets dégradé</button><button class="pb" onclick="applyHdriPreset('bg2kHdriRef')">Fond 2K + reflets HDRI</button></div></div>
 <div class="f"><label>Intensité reflets</label><div class="sr"><input type="range" id="hdriInt" min="1" max="30" value="10"><span class="v" id="hdriIntV">1.0</span></div></div>
 </div></div>
