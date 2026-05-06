@@ -1016,7 +1016,7 @@ function setMat(btn){
 }
 
 // ═══ HDRI SYSTEM ═══
-let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,curHdriBgFinal=null,gradEnvTex=null,gradEnvMap=null;
+let curHdriSlug='',curHdriRes='1k',curHdriBgTex=null,curHdriEnvMap=null,curHdriBgFinal=null,curHdriBgCubeRT=null,gradEnvTex=null,gradEnvMap=null;
 function setHdriStatus(msg,isErr){
   const el=$('hdriStatus');
   if(!el)return;
@@ -1049,10 +1049,28 @@ function prepareHdriTexture(tex){
   tex.needsUpdate=true;
   return tex;
 }
+function hdriResToCubeSize(res){
+  if(res==='8k')return 4096;
+  if(res==='4k')return 2048;
+  if(res==='2k')return 1024;
+  return 512;
+}
+function buildHdriBgCube(tex,res){
+  if(curHdriBgCubeRT){curHdriBgCubeRT.dispose();curHdriBgCubeRT=null;}
+  const size=hdriResToCubeSize(res||'4k');
+  console.log('[HDRI] Building '+size+'px cubemap from equirect');
+  try{
+    const rt=new THREE.WebGLCubeRenderTarget(size,{generateMipmaps:false,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+    rt.fromEquirectangularTexture(R,tex);
+    curHdriBgCubeRT=rt;
+    console.log('[HDRI] Cubemap built OK, '+size+'px per face');
+  }catch(e){console.warn('[HDRI] Cubemap build failed, falling back to equirect:',e);}
+}
 function resetHDRIResources(){
   if(curHdriEnvMap&&curHdriEnvMap.dispose)curHdriEnvMap.dispose();
   if(curHdriBgTex&&curHdriBgTex.dispose)curHdriBgTex.dispose();
-  curHdriEnvMap=null;curHdriBgTex=null;curHdriBgFinal=null;
+  if(curHdriBgCubeRT&&curHdriBgCubeRT.dispose)curHdriBgCubeRT.dispose();
+  curHdriEnvMap=null;curHdriBgTex=null;curHdriBgFinal=null;curHdriBgCubeRT=null;
 }
 function getGradientEnvMap(){
   if(gradEnvMap)return gradEnvMap;
@@ -1088,10 +1106,12 @@ function applyHDRIState(c){
     return;
   }
   if(c.hdriBg){
-    const useRawBg=(!!c.hdriBgSharp)||c.hdri==='custom'||refMode==='none';
-    curHdriBgFinal=useRawBg?(curHdriBgTex||curHdriEnvMap||null):(curHdriEnvMap||curHdriBgTex||null);
+    // Always prefer the high-res cubemap. Fallback chain: cubeRT → raw equirect → PMREM env
+    const bgTex=curHdriBgCubeRT?(curHdriBgCubeRT.texture):(curHdriBgTex||curHdriEnvMap||null);
+    curHdriBgFinal=bgTex;
     scene.background=curHdriBgFinal;
-    setHdriStatus(curHdriBgFinal?('fond OK ('+(c.hdriRes||'1k')+')'):'chargement...',false);
+    const src=curHdriBgCubeRT?'cube':'equirect';
+    setHdriStatus(curHdriBgFinal?('fond OK ('+src+' '+(c.hdriRes||'custom')+')'):'chargement...',false);
     setHdriDiag(c);
   }else{
     curHdriBgFinal=null;
@@ -1121,6 +1141,7 @@ function loadHDRI(slug,c){
     loader.load(url,tex=>{
       prepareHdriTexture(tex);
       curHdriBgTex=tex;
+      buildHdriBgCube(tex,'4k');
       try{curHdriEnvMap=pmrem.fromEquirectangular(tex).texture;}catch(e){console.warn('Custom PMREM build failed:',e);}
       applyHDRIState(window.getConfig());
       URL.revokeObjectURL(url);
@@ -1145,12 +1166,13 @@ function loadHDRI(slug,c){
     const url='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/'+res+'/'+slug+'_'+res+'.hdr';
     console.log('[HDRI] Requesting URL: '+url);
     new THREE.RGBELoader().load(url,tex=>{
-      console.log('[HDRI] Loaded '+res+', res='+tex.source.data.width+'x'+tex.source.data.height);
+      console.log('[HDRI] Loaded '+res+', texSize='+tex.image.width+'x'+tex.image.height);
       prepareHdriTexture(tex);
       curHdriBgTex=tex;
+      buildHdriBgCube(tex,res);
       try{curHdriEnvMap=pmrem.fromEquirectangular(tex).texture;}catch(e){console.warn('[HDRI] PMREM build failed:',e);}
       curHdriRes=res;
-      console.log('[HDRI] Applied res='+res+', curHdriRes='+curHdriRes);
+      console.log('[HDRI] Applied res='+res+', cubemap built='+(!!curHdriBgCubeRT));
       applyHDRIState(window.getConfig());
     },undefined,err=>{
       console.warn('[HDRI] Load failed at '+res+': '+err.message);
