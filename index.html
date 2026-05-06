@@ -665,6 +665,16 @@ const bokehPass=new THREE.BokehPass(scene,cam,{focus:5.0,aperture:0.002,maxblur:
 bokehPass.enabled=false;
 composer.addPass(bokehPass);
 
+// Dithering pass for HDRI banding reduction
+const ditherShader={
+  uniforms:{'tDiffuse':{value:null},'time':{value:0}},
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float time;varying vec2 vUv;float rand(vec2 co){return fract(sin(dot(co.xy,vec2(12.9898,78.233)))*43758.5453);}void main(){vec4 col=texture2D(tDiffuse,vUv);float noise=(rand(vUv*100.0+time)-.5)*.08;col.rgb+=noise;gl_FragColor=col;}`
+};
+const ditherPass=new THREE.ShaderPass(ditherShader);
+ditherPass.enabled=false;
+composer.addPass(ditherPass);
+
 const pmrem=new THREE.PMREMGenerator(R);pmrem.compileEquirectangularShader();
 
 // Animation mixers are per-slot (in SLOTS[])
@@ -2602,8 +2612,9 @@ function anim(t){
   }
   // Bypass composer when HDRI background is active to avoid pass-chain clears.
   const forceDirectHdri=!!(liveCfg.hdri&&liveCfg.hdriBg);
-  if(forceDirectHdri)R.render(scene,cam);
-  else if(bloomPass.enabled||bokehPass.enabled)composer.render();
+  ditherPass.enabled=forceDirectHdri;
+  ditherShader.uniforms.time.value+=.016;  // ~60fps increment
+  if(forceDirectHdri||bloomPass.enabled||bokehPass.enabled)composer.render();
   else R.render(scene,cam);
 }
 anim();
